@@ -230,7 +230,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .small-btn { padding: 6px 10px; font-size: 12px; }
 .btn:disabled { opacity: .45; cursor: default; }
 .raid-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.raid-pill { font-size: 12px; padding: 4px 9px; border-radius: 99px; background: var(--accent-bg); color: var(--muted); }
+.raid-pill { font-size: 12px; padding: 4px 9px 4px 5px; border-radius: 99px; background: var(--accent-bg); color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
 .raid-pill b { color: var(--text); font-weight: 600; }
 .raid-warn { margin-top: 10px; font-size: 12px; color: var(--alert); }
 .sec-label { margin: 18px 4px 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
@@ -253,13 +253,14 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--accent-bg); color: var(--accent); }
 .target-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.target-grid button { text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); display: flex; flex-direction: column; gap: 2px; font-size: 12px; transition: border-color .12s; }
+.target-grid button { text-align: left; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); display: flex; align-items: center; gap: 8px; font-size: 12px; transition: border-color .12s; }
+.target-grid .tg-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .target-grid button:hover { border-color: var(--accent); }
 .target-grid button:active { transform: scale(.98); }
 .target-grid small { color: var(--muted); font-size: 10.5px; }
 .ex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ex-chips input { display: none; }
-.ex-chips span { display: flex; gap: 6px; align-items: baseline; padding: 6px 10px; border: 1px solid var(--line); border-radius: 99px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.ex-chips span { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border: 1px solid var(--line); border-radius: 99px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .ex-chips small { font-size: 10.5px; opacity: .8; }
 .ex-chips input:checked + span { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
 .cmp-row { display: flex; justify-content: space-between; font-size: 12px; padding: 7px 10px; border-radius: 8px; color: var(--muted); }

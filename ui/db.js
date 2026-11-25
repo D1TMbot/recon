@@ -35,7 +35,12 @@ window.DB = (() => {
     if (!s) return `<span class="item-ic letter ${cls}">${letter}</span>`;
     return `<img class="item-ic ${cls}" src="https://wiki.rustclash.com/img/items180/${encodeURIComponent(s)}.png" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;item-ic letter ${cls}&quot;>${letter}</span>'">`;
   }
-  return { ready, name, short, search, icon, byShort: (s) => byShort[s], get craft() { return db.craft; }, get recycle() { return db.recycle; } };
+  /** picture by Rust short name (for things that aren't looked up by id) */
+  function iconShort(s, label = "?", cls = "") {
+    const letter = (String(label).replace(/[^A-Za-z0-9]/g, "")[0] || "?").toUpperCase();
+    return `<img class="item-ic ${cls}" src="https://wiki.rustclash.com/img/items180/${encodeURIComponent(s)}.png" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;item-ic letter ${cls}&quot;>${letter}</span>'">`;
+  }
+  return { ready, name, short, search, icon, iconShort, byShort: (s) => byShort[s], get craft() { return db.craft; }, get recycle() { return db.recycle; } };
 })();
 
 /** Small autocomplete for an <input>: calls onPick(item) when an item is chosen. */

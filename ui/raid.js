@@ -15,6 +15,21 @@
     { id: "propane", name: "Propane bomb", short: "propane bomb", sulfur: 900 },
   ];
   const EX = Object.fromEntries(EXPLOSIVES.map((e, i) => [e.id, { ...e, i }]));
+  // pictures: the item itself, or for building tiers the material they're built from
+  const ICON = {
+    rocket: "ammo.rocket.basic", c4: "explosive.timed", satchel: "explosive.satchel", explo: "ammo.rifle.explosive",
+    beancan: "grenade.beancan", hv: "ammo.rocket.hv", propane: "catapult.ammo.explosive",
+    wood_wall: "wood", stone_wall: "stones", metal_wall: "metal.fragments", armored_wall: "metal.refined",
+    wood_door: "door.hinged.wood", metal_door: "door.hinged.metal", metal_double: "door.double.hinged.metal",
+    ladder_hatch: "floor.ladder.hatch", garage_door: "wall.frame.garagedoor", armored_door: "door.hinged.toptier",
+    armored_double: "door.double.hinged.toptier", cell_gate: "wall.frame.cell.gate", chainlink_gate: "wall.frame.fence.gate",
+    shop_front: "wall.frame.shopfront.metal", wood_bars: "wall.window.bars.wood", metal_bars: "wall.window.bars.metal",
+    reinforced_window: "wall.window.bars.toptier", strengthened_window: "wall.window.glass.reinforced",
+    embrasure: "shutter.metal.embrasure.a", wood_shutters: "shutter.wood.a",
+    hew: "wall.external.high", hew_gate: "gates.external.high.wood", hesw: "wall.external.high.stone", hesw_gate: "gates.external.high.stone",
+    tc: "cupboard.tool", turret: "autoturret", sam: "samsite", vending: "vending.machine",
+  };
+  const pic = (key, label, cls = "") => (ICON[key] ? DB.iconShort(ICON[key], label, cls) : "");
 
   // damage per hit: [rocket, c4, satchel, explo, beancan, hv, propane]; null = can't damage
   const D = {
@@ -155,6 +170,7 @@
       else { for (const [id, n] of Object.entries(s.mix)) total[id] = (total[id] || 0) + n * p.qty; sulfur += s.sulfur * p.qty; }
       return `<div class="raid-row" data-i="${idx}">
         <div class="raid-qty"><button data-act="dec">−</button><span>${p.qty}</span><button data-act="inc">+</button></div>
+        ${pic(t.id, t.name)}
         <div class="raid-main"><div class="raid-name">${esc(t.name)}</div>
           <div class="raid-mix ${s ? "" : "bad"}">${s ? `${mixText(s.mix)} each` : "Can't be broken with the selected explosives"}</div></div>
         <div class="raid-cost">${s ? fmt(s.sulfur * p.qty) : "—"}</div>
@@ -163,14 +179,14 @@
     }).join("") : `<div class="raid-empty">Add what's between you and their loot, like doors, walls and the TC.</div>`;
 
     $("#raid-sulfur").textContent = fmt(sulfur);
-    $("#raid-items").innerHTML = EXPLOSIVES.filter((e) => total[e.id]).map((e) => `<div class="raid-pill"><b>${fmt(total[e.id])}</b> ${plural(e, total[e.id])}</div>`).join("")
+    $("#raid-items").innerHTML = EXPLOSIVES.filter((e) => total[e.id]).map((e) => `<div class="raid-pill">${pic(e.id, e.name, "xs")}<b>${fmt(total[e.id])}</b> ${plural(e, total[e.id])}</div>`).join("")
       || `<div class="muted small">Nothing added yet</div>`;
     $("#raid-warn").hidden = !impossible;
     $("#raid-share").disabled = !sulfur;
 
     $("#raid-cats").innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === R.cat ? "on" : ""}">${c}</button>`).join("");
-    $("#raid-targets").innerHTML = TARGETS.filter((t) => t.cat === R.cat).map((t) => `<button data-add="${t.id}"><span>${esc(t.name)}</span><small>${fmt(t.hp)} HP</small></button>`).join("");
-    $("#raid-explosives").innerHTML = EXPLOSIVES.map((e) => `<label><input type="checkbox" data-ex="${e.id}" ${R.allowed.includes(e.id) ? "checked" : ""}><span>${e.name}<small>${fmt(e.sulfur)}</small></span></label>`).join("");
+    $("#raid-targets").innerHTML = TARGETS.filter((t) => t.cat === R.cat).map((t) => `<button data-add="${t.id}">${pic(t.id, t.name)}<span class="tg-txt"><span>${esc(t.name)}</span><small>${fmt(t.hp)} HP</small></span></button>`).join("");
+    $("#raid-explosives").innerHTML = EXPLOSIVES.map((e) => `<label><input type="checkbox" data-ex="${e.id}" ${R.allowed.includes(e.id) ? "checked" : ""}><span>${pic(e.id, e.name, "xs")}${e.name}<small>${fmt(e.sulfur)}</small></span></label>`).join("");
 
     // what the whole path would cost using a single explosive type
     const rows = R.path.length ? EXPLOSIVES.map((e) => {
@@ -182,7 +198,7 @@
       }
       return { e, n, s };
     }).filter(Boolean).sort((a, b) => a.s - b.s) : [];
-    $("#raid-compare").innerHTML = rows.map((r, i) => `<div class="cmp-row ${i === 0 ? "best" : ""}"><span>${fmt(r.n)} ${plural(r.e, r.n)}</span><b>${fmt(r.s)}</b></div>`).join("")
+    $("#raid-compare").innerHTML = rows.map((r, i) => `<div class="cmp-row ${i === 0 ? "best" : ""}"><span class="with-ic">${pic(r.e.id, r.e.name, "sm")}${fmt(r.n)} ${plural(r.e, r.n)}</span><b>${fmt(r.s)}</b></div>`).join("")
       || `<div class="muted small">Add targets to compare.</div>`;
   }
 
