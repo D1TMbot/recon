@@ -254,15 +254,28 @@ function resizeCanvas() {
 }
 new ResizeObserver(resizeCanvas).observe(canvas);
 
+// The map image (which already includes the ocean out to the edge of the
+// world) always fills the window: you can't zoom out past it or drag it away.
+function minScale() {
+  const r = canvas.getBoundingClientRect();
+  return Math.max(r.width / S.map.width, r.height / S.map.height);
+}
+function clampView() {
+  if (!S.map) return;
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const v = S.view;
+  v.scale = Math.min(8, Math.max(minScale(), v.scale));
+  const w = S.map.width * v.scale, h = S.map.height * v.scale;
+  v.x = Math.min(0, Math.max(r.width - w, v.x));
+  v.y = Math.min(0, Math.max(r.height - h, v.y));
+}
 function fitMap() {
   if (!S.map) return;
   const r = canvas.getBoundingClientRect();
   fittedAtSize = r.width;
-  const phone = r.width <= 720;
-  const left = phone ? 8 : 86; // keep the fitted map clear of the floating dock (it's at the bottom on phones)
-  const w = r.width - left - (phone ? 8 : 14);
-  const s = Math.min(w / S.map.width, r.height / S.map.height) * 0.96;
-  S.view = { scale: s, x: left + (w - S.map.width * s) / 2, y: (r.height - S.map.height * s) / 2 };
+  const s = minScale();
+  S.view = { scale: s, x: (r.width - S.map.width * s) / 2, y: (r.height - S.map.height * s) / 2 };
   draw();
 }
 
@@ -326,6 +339,7 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   $("#map-empty").hidden = !!S.map;
   if (!S.map) return;
+  clampView(); // covers zoom, drag, pinch and "jump to" alike
   const v = S.view;
 
   // --- image space
