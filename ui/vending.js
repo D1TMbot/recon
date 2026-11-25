@@ -39,7 +39,7 @@
         <div class="sec-label">Most listed right now</div>
         <div class="chip-cloud">${top.map(([n, c]) => `<button data-q="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join("")}</div>
         ${V.watch.length ? `<div class="sec-label">Watching</div><div class="chip-cloud">${V.watch.map((n) => `<button data-q="${esc(n)}" class="watch">${esc(n)}</button>`).join("")}</div>` : ""}`
-        : `<div class="raid-empty">No vending machines on this map yet. Connect to a server to search its shops.</div>`;
+        : `<div class="raid-empty">${S.connected ? "This server isn't showing any vending machines through Rust+ right now. Only player shops with <b>Broadcast</b> turned on appear (Outpost and Bandit Camp vendors never do), and some servers hide them completely." : "Connect to a server to search its shops."}</div>`;
       draw();
       return;
     }
