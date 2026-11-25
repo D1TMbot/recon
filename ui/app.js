@@ -34,7 +34,7 @@ const S = {
   team: null,
   markers: [],
   chat: [],
-  layers: { grid: true, monuments: true, events: true, shops: false, nodes: true },
+  layers: { grid: true, monuments: true, events: true, shops: true, nodes: true },
   view: { scale: 1, x: 0, y: 0 },
   timers: [],
   knownEvents: new Map(), // marker id -> type, for spawn alerts
