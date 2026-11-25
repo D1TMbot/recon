@@ -32,7 +32,6 @@ cfg.phones ??= []; // [{ token, name, created, lastSeen }]
 if (!cfg.settings.ntfyTopic) { cfg.settings.ntfyTopic = newTopic(); save(); }
 let client = null;       // active RustPlusClient
 let listener = null;     // PushListener
-let lastClient = null;  // for troubleshooting
 let active = null;       // { server, mapKey, mapSize } for the connected server
 
 // ------------------------------------------------------------------ events
@@ -73,9 +72,6 @@ function tokenExpiry(token) {
   try { return Number(JSON.parse(Buffer.from(String(token).split(".")[0], "base64").toString("utf8")).exp) || null; } catch { return null; }
 }
 
-// last push we received, with secrets hidden, for troubleshooting pairing
-let lastPush = null;
-const redact = (o) => Object.fromEntries(Object.entries(o ?? {}).map(([k, v]) => [k, /token|key|secret/i.test(k) ? "(hidden)" : v]));
 
 function handlePush(data) {
   const title = data.title ?? "";
@@ -90,7 +86,6 @@ function handlePush(data) {
       try { const j = JSON.parse(v); if (j && j.ip) { body = j; break; } } catch {}
     }
   }
-  lastPush = { at: new Date().toISOString(), outerKeys: Object.keys(data), channel, title, body: body && typeof body === "object" ? redact(body) : null };
   if (!body) return emit("notification", { title, message, channel });
 
   // address fields: "ip"/"port" historically; accept likely alternatives too
@@ -109,7 +104,7 @@ function handlePush(data) {
   const playerToken = Number(body.playerToken);
   if (!playerId || !Number.isFinite(playerToken)) return;
   if (!serverId) {
-    emit("pair-error", { message: "Pairing message had no server address or id. Recon saved it for troubleshooting." });
+    emit("pair-error", { message: "Pairing message had no server address or id. Try pairing again." });
     return;
   }
 
@@ -311,8 +306,6 @@ const commands = {
     return currentPins();
   },
 
-  debug_last_push: () => lastPush,
-  debug_client: () => lastClient?.debug() ?? null,
   async get_state() {
     return {
       version: currentVersion(),
@@ -389,7 +382,6 @@ const commands = {
         emit("rp-disconnected", id);
       },
     });
-    lastClient = c;
     await c.connect();
     const info = await c.getInfo();
     client = c;
@@ -448,7 +440,7 @@ function onTeamMessage(c, msg) {
 // must carry a token that was handed out for a one-time pairing code.
 const HOST = cfg.settings.phoneAccess ? "0.0.0.0" : "127.0.0.1";
 let pairCode = null; // { code, expires }
-const LOCAL_ONLY = new Set(["check_update", "install_update", "start_pairing", "login_callback", "sign_out", "remove_server", "get_phone_access", "new_phone_code", "revoke_phone", "set_phone_access", "quit", "debug_last_push", "debug_client"]);
+const LOCAL_ONLY = new Set(["check_update", "install_update", "start_pairing", "login_callback", "sign_out", "remove_server", "get_phone_access", "new_phone_code", "revoke_phone", "set_phone_access", "quit"]);
 const isLocal = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
 function cookieToken(req) {
   const m = String(req.headers.cookie ?? "").match(/(?:^|;\s*)recon_token=([a-f0-9]{64})/);

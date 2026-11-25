@@ -71,13 +71,9 @@ export class RustPlusClient {
 
   #wire() {
     // the relay may also send text frames; only binary frames are protobuf messages
-    this.frames = [];
     this.ws.on("message", (data, isBinary) => {
-      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-      if (this.frames.length < 20) this.frames.push({ at: Date.now(), binary: isBinary, len: buf.length, head: isBinary ? buf.subarray(0, 24).toString("hex") : buf.toString("utf8").slice(0, 300) });
-      if (isBinary !== false) this.#onMessage(buf);
+      if (isBinary !== false) this.#onMessage(Buffer.isBuffer(data) ? data : Buffer.from(data));
     });
-    this.ws.on("close", (code, reason) => { this.closeInfo = { code, reason: String(reason) }; });
     this.ws.on("close", () => {
       for (const { reject, timer } of this.pending.values()) { clearTimeout(timer); reject(new Error("connection closed")); }
       this.pending.clear();
@@ -95,7 +91,7 @@ export class RustPlusClient {
   #onMessage(data) {
     let msg;
     try { msg = decode(R.AppMessage, data); }
-    catch (e) { (this.decodeErrors ??= []).length < 10 && this.decodeErrors.push(String(e.message)); return; }
+    catch { return; } // not a message we understand
     if (msg.response) {
       const p = this.pending.get(msg.response.seq);
       if (p) {
@@ -108,8 +104,6 @@ export class RustPlusClient {
     if (msg.broadcast) this.onBroadcast?.(msg.broadcast);
   }
 
-  debug() { return { readyState: this.ws?.readyState, protocol: this.ws?.protocol, frames: this.frames, closeInfo: this.closeInfo, sent: this.sent, decodeErrors: this.decodeErrors }; }
-
   request(fields) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Not connected to a server"));
     const seq = this.seq++;
@@ -119,7 +113,6 @@ export class RustPlusClient {
       playerToken: this.server.playerToken,
       ...fields,
     });
-    (this.sent ??= []).length < 10 && this.sent.push({ at: Date.now(), seq, len: buf.length, keys: Object.keys(fields) });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(seq);

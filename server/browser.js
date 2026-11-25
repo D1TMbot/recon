@@ -26,7 +26,7 @@ function defaultBrowserExe() {
   } catch { return null; }
 }
 
-export function findBrowser() {
+function findBrowser() {
   const preferred = defaultBrowserExe();
   if (preferred) return preferred;
   const pf = process.env.ProgramFiles ?? "C:\\Program Files";
