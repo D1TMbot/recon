@@ -94,20 +94,60 @@
   }
 
   // ----------------------------------------------------------------- state
-  const KEY = "recon.raid";
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
-  const R = {
-    path: (saved.path || []).filter((p) => T[p.id]),
-    allowed: saved.allowed || ["rocket", "c4", "satchel", "explo"],
-    cat: CATS[0],
+  // One plan per target: "general", or an enemy base marker (server + position).
+  const PKEY = "recon.raid.plans";
+  const plans = (() => {
+    try { const p = JSON.parse(localStorage.getItem(PKEY)); if (p) return p; } catch {}
+    try { const old = JSON.parse(localStorage.getItem("recon.raid")); if (old) return { general: old }; } catch {} // older single plan
+    return {};
+  })();
+  const DEFAULT_ALLOWED = ["rocket", "c4", "satchel", "explo"];
+  const R = { target: "general", path: [], allowed: DEFAULT_ALLOWED, cat: CATS[0] };
+  const pinKey = (pin) => `${S.active ?? "demo"}|${Math.round(pin.x)}|${Math.round(pin.y)}`;
+  function loadPlan(key) {
+    R.target = key;
+    const p = plans[key] ?? {};
+    R.path = (p.path || []).filter((x) => T[x.id]);
+    R.allowed = p.allowed || [...(plans.general?.allowed ?? DEFAULT_ALLOWED)];
+  }
+  const save = () => {
+    plans[R.target] = { ...(plans[R.target] ?? {}), path: R.path, allowed: R.allowed };
+    if (!R.path.length && R.target !== "general") delete plans[R.target]; // empty plans don't need keeping
+    localStorage.setItem(PKEY, JSON.stringify(plans));
+    draw(); // enemy marker labels show the plan's sulfur
   };
-  const save = () => localStorage.setItem(KEY, JSON.stringify({ path: R.path, allowed: R.allowed }));
+  /** total sulfur of a saved plan (or the current one) */
+  function planSulfur(path, allowed) {
+    let sulfur = 0;
+    for (const p of path) { const s = solve(T[p.id], allowed); if (s) sulfur += s.sulfur * p.qty; }
+    return sulfur;
+  }
+  loadPlan("general");
   const fmt = (n) => n.toLocaleString("en-US");
   const mixText = (mix) => EXPLOSIVES.filter((e) => mix[e.id]).map((e) => `${mix[e.id]} ${e.short}${mix[e.id] > 1 && !/[o4]$/.test(e.short) ? "s" : ""}`).join(" + ");
   const plural = (e, n) => (n === 1 || e.id === "explo" || e.id === "c4" ? e.name : e.name + "s");
 
+  // ------------------------------------------------------------ target
+  const enemyPins = () => (window.Pins?.all?.() ?? []).filter((p) => p.kind === "enemy");
+  function renderTarget() {
+    const pins = enemyPins();
+    const sel = $("#raid-target-sel");
+    sel.innerHTML = `<option value="general">General plan (no base picked)</option>` +
+      pins.map((p) => { const k = pinKey(p), s = planSulfur(plans[k]?.path ?? [], plans[k]?.allowed ?? DEFAULT_ALLOWED);
+        return `<option value="${esc(k)}">${esc(p.label || "Enemy base")} (${gridLabel(p.x, p.y)})${s ? ` · ${fmt(s)} sulfur` : ""}</option>`; }).join("");
+    const exists = R.target === "general" || pins.some((p) => pinKey(p) === R.target);
+    if (!exists) loadPlan("general");
+    sel.value = R.target;
+    const pin = pins.find((p) => pinKey(p) === R.target), base = window.Pins?.base?.();
+    $("#raid-target-show").hidden = !pin;
+    $("#raid-target-info").innerHTML = pin
+      ? `Planning the raid on <b>${esc(pin.label || "this enemy base")}</b> at <b>${gridLabel(pin.x, pin.y)}</b>${base ? `, ${(Math.hypot(pin.x - base.x, pin.y - base.y) / 1000).toFixed(1)} km from your base` : ""}.`
+      : pins.length ? "Pick an enemy base to plan a raid on it, or right-click an enemy marker on the map." : "Tip: mark an enemy base on the map (right-click → Enemy base), then right-click it → Plan raid.";
+  }
+
   // ---------------------------------------------------------------- render
   function render() {
+    renderTarget();
     const total = {}; let sulfur = 0, impossible = false;
     $("#raid-path").innerHTML = R.path.length ? R.path.map((p, idx) => {
       const t = T[p.id], s = solve(t, R.allowed);
@@ -177,6 +217,18 @@
     catch (err) { navigator.clipboard?.writeText(msg); toast("Not connected", "Copied the plan to your clipboard instead.", ""); }
   };
 
+  $("#raid-target-sel").onchange = (e) => { loadPlan(e.target.value); render(); };
+  $("#raid-target-show").onclick = () => {
+    const pin = enemyPins().find((p) => pinKey(p) === R.target);
+    if (pin) { openPanel("map"); centerOn(pin.x, pin.y, Math.max(S.view.scale, 1.6)); }
+  };
+
   render();
-  window.Raid = { solve, TARGETS, EXPLOSIVES, render };
+  window.Raid = {
+    solve, TARGETS, EXPLOSIVES, render,
+    /** open the planner on an enemy base marker */
+    openFor(pin) { loadPlan(pinKey(pin)); openPanel("raid"); render(); },
+    /** sulfur total of the saved plan for a marker (0 if none) */
+    sulfurFor(pin) { const p = plans[pinKey(pin)]; return p ? planSulfur(p.path, p.allowed) : 0; },
+  };
 })();

@@ -199,7 +199,7 @@
     note: { color: "#cbd5e1", name: "Note", glyph: (x, y) => { ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); } },
   };
   let pins = [];
-  const setPins = (list) => { pins = list || []; draw(); window.Nodes?.render(); };
+  const setPins = (list) => { pins = list || []; draw(); window.Nodes?.render(); window.Raid?.render(); };
   listen("pins-changed", ({ payload }) => setPins(payload));
   window.drawPins = () => {
     for (const p of pins) {
@@ -207,7 +207,8 @@
       badge(x, y, 13, st.color);
       ctx.fillStyle = st.color; ctx.strokeStyle = st.color; st.glyph(x, y);
       labelBoxes.push({ x: x - 13, y: y - 13, w: 26, h: 26 });
-      const b = reserveLabel(p.label || st.name, x, y + 25, 10.5, true); // below the icon, always shown
+      const raidS = p.kind === "enemy" ? window.Raid?.sulfurFor?.(p) ?? 0 : 0; // planned raid cost
+      const b = reserveLabel(`${p.label || st.name}${raidS ? ` · ${raidS.toLocaleString("en-US")} sulfur` : ""}`, x, y + 25, 10.5, true); // below the icon, always shown
       pill(b, st.color);
     }
   };
@@ -215,6 +216,7 @@
     kinds: PIN_STYLE,
     near: (wx, wy, r = 40) => pins.filter((p) => Math.hypot(p.x - wx, p.y - wy) < r).sort((a, b) => Math.hypot(a.x - wx, a.y - wy) - Math.hypot(b.x - wx, b.y - wy))[0],
     base: () => pins.find((p) => p.kind === "base") ?? null,
+    all: () => pins,
     async add(kind, wx, wy, presetLabel) {
       const label = presetLabel ?? prompt(`Label for this ${PIN_STYLE[kind].name.toLowerCase()} marker (optional):`, "") ?? null;
       if (label === null) return;

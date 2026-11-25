@@ -352,6 +352,7 @@
     const [wx, wy] = imgToWorld((e.clientX - r.left - S.view.x) / S.view.scale, (e.clientY - r.top - S.view.y) / S.view.scale);
     menu.innerHTML = `<div class="ctx-head">Add marker at ${gridLabel(wx, wy)}</div>` +
       Object.entries(Pins.kinds).map(([k, v]) => `<button data-pin="${k}"><i style="background:${v.color}"></i>${v.name}</button>`).join("") +
+      (Pins.near(wx, wy)?.kind === "enemy" ? `<div class="ctx-sep"></div><button data-raid><i style="background:#e879f9"></i>Plan raid on this base</button>` : "") +
       (Pins.near(wx, wy) ? `<div class="ctx-sep"></div><button data-unpin class="danger">Remove marker</button>` : "");
     menu.style.left = `${Math.min(e.clientX, innerWidth - 200)}px`;
     menu.style.top = `${Math.min(e.clientY, innerHeight - 220)}px`;
@@ -360,6 +361,7 @@
       const b = ev.target.closest("button"); if (!b) return;
       if (b.dataset.pin) Pins.add(b.dataset.pin, wx, wy);
       if ("unpin" in b.dataset) { const p = Pins.near(wx, wy); if (p) Pins.remove(p); }
+      if ("raid" in b.dataset) { const p = Pins.near(wx, wy); if (p) window.Raid?.openFor(p); }
       closeMenu();
     };
   });
