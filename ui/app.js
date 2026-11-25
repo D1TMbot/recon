@@ -742,7 +742,7 @@ $("#btn-signout").onclick = async () => {
 };
 
 // ----------------------------------------------------------- tabs, state
-const PANEL_TITLES = { team: "Team", chat: "Team chat", devices: "Smart devices", raid: "Raid planner", nodes: "Node heatmap", shops: "Vending search", craft: "Craft and recycle", alerts: "Alerts and settings", players: "Server population" };
+const PANEL_TITLES = { team: "Team and chat", devices: "Smart devices", raid: "Raid planner", nodes: "Node heatmap", shops: "Vending search", craft: "Craft and recycle", alerts: "Alerts and settings", players: "Server population" };
 function openPanel(name) {
   const show = name && name !== "map" && PANEL_TITLES[name];
   document.querySelectorAll("#dock [data-panel]").forEach((x) => x.classList.toggle("active", x.dataset.panel === (show ? name : "map")));
@@ -755,7 +755,7 @@ function openPanel(name) {
   if (name === "players") window.Population?.load();
   if (name === "alerts") window.PhoneSettings?.load();
   if (name === "shops") { window.Vending?.render(); setTimeout(() => $("#shop-q").focus(), 50); }
-  if (name === "chat") { const log = $("#chat-log"); log.scrollTop = log.scrollHeight; $("#chat-text").focus(); }
+  if (name === "team") { const log = $("#chat-log"); log.scrollTop = log.scrollHeight; }
 }
 document.querySelectorAll("#dock [data-panel]").forEach((b) => {
   b.onclick = () => openPanel(b.classList.contains("active") ? "map" : b.dataset.panel);

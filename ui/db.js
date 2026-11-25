@@ -28,7 +28,14 @@ window.DB = (() => {
     }
     return scored.sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, limit).map((x) => x[2]);
   }
-  return { ready, name, short, search, byShort: (s) => byShort[s], get craft() { return db.craft; }, get recycle() { return db.recycle; } };
+  /** <img> for an item (Rust wiki item image), falling back to a letter badge. */
+  function icon(id, cls = "") {
+    const s = short(id), n = name(id);
+    const letter = (n.replace(/[^A-Za-z0-9]/g, "")[0] || "?").toUpperCase();
+    if (!s) return `<span class="item-ic letter ${cls}">${letter}</span>`;
+    return `<img class="item-ic ${cls}" src="https://wiki.rustclash.com/img/items180/${encodeURIComponent(s)}.png" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;item-ic letter ${cls}&quot;>${letter}</span>'">`;
+  }
+  return { ready, name, short, search, icon, byShort: (s) => byShort[s], get craft() { return db.craft; }, get recycle() { return db.recycle; } };
 })();
 
 /** Small autocomplete for an <input>: calls onPick(item) when an item is chosen. */
@@ -42,7 +49,7 @@ function itemPicker(input, { filter, onPick, placeholder }) {
   const show = () => {
     results = DB.search(input.value, { filter: filter && ((id) => filter(id)) });
     sel = 0;
-    box.innerHTML = results.map((r, i) => `<button data-i="${i}" class="${i === sel ? "on" : ""}">${esc(r.name)}</button>`).join("");
+    box.innerHTML = results.map((r, i) => `<button data-i="${i}" class="${i === sel ? "on" : ""}">${DB.icon(r.id, "sm")}<span>${esc(r.name)}</span></button>`).join("");
     box.hidden = !results.length;
   };
   const pick = (i) => { const r = results[i]; if (!r) return; box.hidden = true; onPick(r); };

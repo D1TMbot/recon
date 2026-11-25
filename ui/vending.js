@@ -59,8 +59,8 @@
       const o = r.o, out = o.amountInStock <= 0, isBest = best.get(r.item + "|" + r.cur) === r;
       const cond = o.itemConditionMax ? ` · ${Math.round((o.itemCondition / o.itemConditionMax) * 100)}%` : "";
       return `<button class="shop-row ${out ? "out" : ""}" data-shop="${r.shop.id}">
-        <div class="sr-top"><span class="sr-item">${fmt(o.quantity)} × ${esc(r.item)}${o.itemIsBlueprint ? " <em>BP</em>" : ""}</span>${isBest ? `<span class="tag ok">Best</span>` : ""}</div>
-        <div class="sr-price">for <b>${fmt(o.costPerItem)} ${esc(r.cur)}</b>${o.currencyIsBlueprint ? " BP" : ""} <span class="muted">· ${fmt(o.costPerItem / o.quantity)} each</span></div>
+        <div class="sr-top"><span class="sr-item with-ic">${DB.icon(o.itemId, "sm")}${fmt(o.quantity)} × ${esc(r.item)}${o.itemIsBlueprint ? " <em>BP</em>" : ""}</span>${isBest ? `<span class="tag ok">Best</span>` : ""}</div>
+        <div class="sr-price with-ic">${DB.icon(o.currencyId, "xs")}for <b>${fmt(o.costPerItem)} ${esc(r.cur)}</b>${o.currencyIsBlueprint ? " BP" : ""} <span class="muted">· ${fmt(o.costPerItem / o.quantity)} each</span></div>
         <div class="sr-meta"><span>${esc(r.shop.name || "Vending machine")}</span><span>${gridLabel(r.shop.x, r.shop.y)}${cond} · ${out ? "out of stock" : `${o.amountInStock} in stock`}</span></div>
       </button>`;
     }).join("") : `<div class="raid-empty">Nobody is ${V.mode === "sell" ? "selling" : "buying with"} “${esc(V.q)}” right now.${watched ? "" : " Tap the bell to get an alert when someone does."}</div>`;

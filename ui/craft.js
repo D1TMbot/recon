@@ -70,6 +70,7 @@
         : "";
       return `<div class="craft-row" data-i="${i}">
         <input type="number" min="1" value="${r.qty}" class="craft-qty" />
+        ${DB.icon(r.id)}
         <div class="raid-main"><div class="raid-name">${esc(DB.name(r.id))}</div>${note ? `<div class="muted small">${note}</div>` : ""}</div>
         <button class="raid-rm" data-rm title="Remove">✕</button>
       </div>`;
@@ -85,8 +86,8 @@
           <div><span class="muted small">Workbench</span><b>${wb ? "Level " + wb : "None"}</b></div>
         </div>
         <div class="sec-label">You need</div>
-        ${mats.map(([id, n]) => `<div class="cmp-row"><span>${esc(DB.name(id))}</span><b>${fmt(n)}</b></div>`).join("")}
-        ${steps.length ? `<div class="sec-label">Crafted along the way</div>${steps.map((s) => `<div class="cmp-row"><span>${esc(DB.name(s.id))}</span><b>${fmt(s.made)}</b></div>`).join("")}` : ""}`;
+        ${mats.map(([id, n]) => `<div class="cmp-row"><span class="with-ic">${DB.icon(id, "sm")}${esc(DB.name(id))}</span><b>${fmt(n)}</b></div>`).join("")}
+        ${steps.length ? `<div class="sec-label">Crafted along the way</div>${steps.map((s) => `<div class="cmp-row"><span class="with-ic">${DB.icon(s.id, "sm")}${esc(DB.name(s.id))}</span><b>${fmt(s.made)}</b></div>`).join("")}` : ""}`;
     } else {
       const { totals } = computeRecycle();
       const scrapId = DB.byShort("scrap");
@@ -94,9 +95,9 @@
       totals.delete(scrapId);
       const mats = [...totals.entries()].sort((a, b) => b[1] - a[1]);
       $("#craft-out").innerHTML = `
-        <div class="craft-sum single"><div><span class="muted small">Scrap</span><b class="accent">${fmt(scrap)}</b></div></div>
+        <div class="craft-sum single"><div class="scrap-sum">${DB.icon(scrapId, "lg")}<div><span class="muted small">Scrap</span><b class="accent">${fmt(scrap)}</b></div></div></div>
         <div class="sec-label">You get</div>
-        ${mats.length ? mats.map(([id, n]) => `<div class="cmp-row"><span>${esc(DB.name(id))}</span><b>${fmt(n)}</b></div>`).join("") : `<div class="muted small">Only scrap.</div>`}
+        ${mats.length ? mats.map(([id, n]) => `<div class="cmp-row"><span class="with-ic">${DB.icon(id, "sm")}${esc(DB.name(id))}</span><b>${fmt(n)}</b></div>`).join("") : `<div class="muted small">Only scrap.</div>`}
         <p class="muted small raid-note">Average amounts. Items with a random chance show the expected value.</p>`;
     }
   }

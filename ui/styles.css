@@ -183,6 +183,12 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 
 /* ------------------------------------------------------------------ chat */
 .chat { display: flex; flex-direction: column; height: 100%; }
+/* Team tab: members on top (scroll if many), chat fills the rest */
+#tab-team.active { display: flex; flex-direction: column; }
+#tab-team .team-grid { flex: none; max-height: 45%; overflow-y: auto; }
+#tab-team .card { padding: 9px 12px; }
+#tab-team .card .row { padding: 1px 0; }
+#tab-team .chat { flex: 1; min-height: 0; height: auto; }
 .chat-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 12px; user-select: text; }
 .msg { font-size: 13px; line-height: 1.45; }
 .msg .t { color: var(--muted); font-size: 11px; margin-right: 6px; font-variant-numeric: tabular-nums; }
@@ -348,6 +354,19 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .sn-why ul:last-child { margin-bottom: 0; }
 .sn-why li { margin-bottom: 4px; }
 
+/* ------------------------------------------------------------ item icons */
+.item-ic { width: 30px; height: 30px; object-fit: contain; flex: none; border-radius: 6px; background: rgba(255,255,255,.04); }
+.item-ic.sm { width: 22px; height: 22px; border-radius: 5px; }
+.item-ic.xs { width: 16px; height: 16px; border-radius: 4px; background: none; }
+.item-ic.lg { width: 40px; height: 40px; }
+.item-ic.letter { display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--panel); border: 1px solid var(--line); }
+.item-ic.letter.sm { font-size: 10px; }
+.item-ic.letter.xs { font-size: 9px; }
+.with-ic { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.sr-price.with-ic { gap: 5px; }
+.ac-box button { display: flex !important; align-items: center; gap: 9px; }
+.scrap-sum { flex-direction: row !important; align-items: center; gap: 12px !important; }
+
 /* ----------------------------------------------------------------- craft */
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 4px 2px 0; cursor: pointer; line-height: 1.4; }
 .toggle input { display: none; }
@@ -361,7 +380,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .craft-qty:focus { border-color: var(--accent); }
 .craft-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 14px; }
 .craft-sum.single { grid-template-columns: 1fr; }
-.craft-sum div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.craft-sum > div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
 .craft-sum b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .craft-sum b.accent { color: var(--accent); font-size: 26px; }
 

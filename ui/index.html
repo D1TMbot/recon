@@ -47,8 +47,7 @@
     <div class="dock-logo" title="Recon"><svg><use href="#logo"/></svg></div>
     <div class="dock-sep"></div>
     <button data-panel="map" class="active" title="Map"><svg><use href="#i-map"/></svg></button>
-    <button data-panel="team" title="Team"><svg><use href="#i-team"/></svg></button>
-    <button data-panel="chat" title="Team chat"><svg><use href="#i-chat"/></svg></button>
+    <button data-panel="team" title="Team and chat"><svg><use href="#i-team"/></svg></button>
     <button data-panel="devices" title="Smart devices"><svg><use href="#i-bolt"/></svg></button>
     <button data-panel="raid" title="Raid planner"><svg><use href="#i-bomb"/></svg></button>
     <button data-panel="nodes" title="Node heatmap"><svg><use href="#i-node"/></svg></button>
@@ -123,9 +122,9 @@
       <button class="icon-btn" id="panel-close" title="Close"><svg><use href="#i-x"/></svg></button>
     </header>
     <div class="panel-body">
-      <div class="tab" id="tab-team"><div class="team-grid" id="team-grid"></div></div>
-
-      <div class="tab" id="tab-chat">
+      <div class="tab" id="tab-team">
+        <div class="team-grid" id="team-grid"></div>
+        <div class="sec-label">Team chat</div>
         <div class="chat">
           <div class="chat-log" id="chat-log"></div>
           <form class="chat-input" id="chat-form">
