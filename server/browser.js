@@ -4,11 +4,31 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import WebSocket from "ws";
 import { DATA_DIR } from "./store.js";
 
-function findBrowser() {
+// Chrome-type browsers support the app window (--app) and the DevTools control
+// the Steam sign-in needs, so Recon uses the person's default browser when it's
+// one of these. Otherwise (e.g. Firefox) it falls back to Edge / Chrome.
+const CHROMIUM = /\\(chrome|msedge|brave|opera|vivaldi|launcher)\.exe$/i;
+function defaultBrowserExe() {
+  try {
+    const q = (key, value) => execFileSync("reg", ["query", key, ...(value ? ["/v", value] : ["/ve"])], { encoding: "utf8", windowsHide: true });
+    const progId = q("HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice", "ProgId").match(/ProgId\s+REG_SZ\s+(\S+)/)?.[1];
+    if (!progId) return null;
+    const cmd = q(`HKCR\\${progId}\\shell\\open\\command`).match(/REG_SZ\s+(.+)/)?.[1] ?? "";
+    const exe = (cmd.match(/^"([^"]+)"/)?.[1] ?? cmd.split(/\s+/)[0]).trim();
+    if (!exe || !fs.existsSync(exe) || !CHROMIUM.test(exe)) return null;
+    // Opera's launcher.exe starts opera.exe from the same folder; use opera.exe itself
+    if (/launcher\.exe$/i.test(exe)) { const o = path.join(path.dirname(exe), "opera.exe"); return fs.existsSync(o) ? o : null; }
+    return exe;
+  } catch { return null; }
+}
+
+export function findBrowser() {
+  const preferred = defaultBrowserExe();
+  if (preferred) return preferred;
   const pf = process.env.ProgramFiles ?? "C:\\Program Files";
   const pf86 = process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
   const local = process.env.LOCALAPPDATA ?? "";

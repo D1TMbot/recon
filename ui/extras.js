@@ -9,14 +9,22 @@
   let settings = {};
 
   // ================================================================ siren
-  let audio = null, sirenTimer = null, titleTimer = null;
+  // Browsers only allow sound after the page has been clicked once, so one
+  // shared audio context is created/unlocked on the first click or key press.
+  let audio = null, siren = null, sirenTimer = null, titleTimer = null;
+  const unlockAudio = () => {
+    try { audio ??= new AudioContext(); if (audio.state === "suspended") audio.resume(); } catch {}
+  };
+  addEventListener("pointerdown", unlockAudio, true);
+  addEventListener("keydown", unlockAudio, true);
   function startSiren() {
     if (settings.siren === false) return;
     stopSirenSound();
     try {
-      audio = new AudioContext();
+      unlockAudio();
       const gain = audio.createGain(); gain.gain.value = 0.22; gain.connect(audio.destination);
       const osc = audio.createOscillator(); osc.type = "sawtooth"; osc.connect(gain); osc.start();
+      siren = { osc, gain };
       const sweep = () => {
         const t = audio.currentTime;
         osc.frequency.cancelScheduledValues(t);
@@ -27,7 +35,11 @@
       sweep(); sirenTimer = setInterval(sweep, 900);
     } catch {}
   }
-  function stopSirenSound() { clearInterval(sirenTimer); sirenTimer = null; try { audio?.close(); } catch {} audio = null; }
+  function stopSirenSound() {
+    clearInterval(sirenTimer); sirenTimer = null;
+    try { siren?.osc.stop(); siren?.gain.disconnect(); } catch {}
+    siren = null;
+  }
 
   function showAlarm({ title, message, serverId }) {
     const srv = S.servers.find((s) => s.id === serverId);
