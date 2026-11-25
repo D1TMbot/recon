@@ -188,12 +188,32 @@
         <div id="node-hot"></div>
       </div>
       <div class="tab" id="tab-shops">
+        <div class="shop-notice" id="shop-notice" hidden>
+          <div class="sn-icon"><svg><use href="#i-shop"/></svg></div>
+          <h3>This server doesn't share vending machines</h3>
+          <p>Right now this server sends Recon no shops at all, so there's nothing to search or show on the map.</p>
+          <div class="sn-why">
+            <b>Why?</b>
+            <ul>
+              <li>Recon (like every Rust+ app) can only see what the server shares through Rust+. Some servers turn this off on purpose so nobody can scan every shop from outside the game.</li>
+              <li>Only player vending machines with <b>Broadcast</b> turned on are ever shared. Outpost and Bandit Camp vendors never are.</li>
+              <li>Early in a wipe there may simply be no broadcasting shops yet.</li>
+            </ul>
+            <b>What you can do</b>
+            <ul>
+              <li>Use the vending search on the in-game map (press G).</li>
+              <li>On servers that share shops, this tab works automatically: item search, best prices, shops on the map, and alerts for items you watch.</li>
+            </ul>
+          </div>
+        </div>
+        <div id="shop-search-area">
         <div class="search-row">
           <div class="search-wrap"><svg><use href="#i-search"/></svg><input id="shop-q" class="search" autocomplete="off" /></div>
           <button class="icon-btn bell" id="shop-watch" hidden><svg><use href="#i-bell"/></svg></button>
         </div>
         <div class="seg" id="shop-mode"><button data-mode="sell">Shops selling it</button><button data-mode="buy">Shops paying with it</button></div>
         <div id="shop-results"></div>
+        </div>
       </div>
 
       <div class="tab" id="tab-players">

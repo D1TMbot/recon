@@ -337,6 +337,17 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .sr-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); margin-top: 6px; }
 .sr-meta span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.shop-notice { text-align: center; padding: 8px 6px 4px; }
+.sn-icon { width: 52px; height: 52px; margin: 6px auto 10px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
+.sn-icon svg { width: 24px; height: 24px; }
+.shop-notice h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.shop-notice > p { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.sn-why { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+.sn-why > b { display: block; color: var(--text); font-weight: 600; margin: 2px 0 4px; }
+.sn-why ul { margin: 0 0 10px; padding-left: 18px; }
+.sn-why ul:last-child { margin-bottom: 0; }
+.sn-why li { margin-bottom: 4px; }
+
 /* ----------------------------------------------------------------- craft */
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 4px 2px 0; cursor: pointer; line-height: 1.4; }
 .toggle input { display: none; }

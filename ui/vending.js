@@ -26,6 +26,12 @@
     const watched = V.watch.includes(V.q.trim());
     $("#shop-watch").hidden = !q;
     $("#shop-watch").classList.toggle("on", watched);
+
+    // connected, but the server sends no vending machines at all: say so up front
+    const noShops = S.connected && !S.demo && shops().length === 0;
+    $("#shop-notice").hidden = !noShops;
+    $("#shop-search-area").hidden = noShops;
+    if (noShops) { S.shopMatch = null; list.innerHTML = ""; draw(); return; }
     $("#shop-watch").title = watched ? "Stop alerts for this item" : "Alert me when a shop starts selling this";
 
     if (!q) {
