@@ -1,0 +1,12 @@
+{
+  "name": "Recon",
+  "short_name": "Recon",
+  "description": "Rust companion: live map, team, raid alerts",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080c13",
+  "theme_color": "#080c13",
+  "icons": [
+    { "src": "icon.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }
+  ]
+}

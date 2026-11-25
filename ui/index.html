@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#080c13" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Recon" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <title>Recon</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" sizes="256x256" href="icon.png" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="logo" viewBox="0 0 64 64"><polygon points="32,9 51,55 32,43 13,55" fill="#3FD0FF"/><polygon points="32,9 32,43 13,55" fill="#2F7BFF"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z M9 3v15 M15 6v15"/></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8 M18 14.3c2.1.7 3.5 2.8 3.5 5.7"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-bomb" viewBox="0 0 24 24"><circle cx="10.5" cy="14.5" r="6.5"/><path d="M15 10l2.5-2.5 M17 4.5l1 1 M20.5 3.5L19 5 M20 8h1.5"/></symbol>
+    <symbol id="i-node" viewBox="0 0 24 24"><path d="M12 3l8 5v8l-8 5-8-5V8z M4 8l8 5 8-5 M12 13v8"/></symbol>
+    <symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9 M4 9h16v11H4z M9 20v-6h6v6"/></symbol>
+    <symbol id="i-craft" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5-2 2-5-5z M12.5 6.5L4 15l5 5 8.5-8.5 M7 17.5l-3 3"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19h16 M6 16l4-5 3 3 5-7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14 M5 12h14"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  </svg>
+
+  <!-- the map is the whole window; everything else floats on top -->
+  <div class="stage" id="map-wrap">
+    <canvas id="map-canvas"></canvas>
+    <div class="map-empty" id="map-empty">Connect to a server to load its map.</div>
+  </div>
+
+  <!-- left dock -->
+  <nav class="dock float" id="dock">
+    <div class="dock-logo" title="Recon"><svg><use href="#logo"/></svg></div>
+    <div class="dock-sep"></div>
+    <button data-panel="map" class="active" title="Map"><svg><use href="#i-map"/></svg></button>
+    <button data-panel="team" title="Team"><svg><use href="#i-team"/></svg></button>
+    <button data-panel="chat" title="Team chat"><svg><use href="#i-chat"/></svg></button>
+    <button data-panel="devices" title="Smart devices"><svg><use href="#i-bolt"/></svg></button>
+    <button data-panel="raid" title="Raid planner"><svg><use href="#i-bomb"/></svg></button>
+    <button data-panel="nodes" title="Node heatmap"><svg><use href="#i-node"/></svg></button>
+    <button data-panel="shops" title="Vending search"><svg><use href="#i-shop"/></svg></button>
+    <button data-panel="craft" title="Craft and recycle"><svg><use href="#i-craft"/></svg></button>
+    <button data-panel="players" title="Server population"><svg><use href="#i-chart"/></svg></button>
+    <button data-panel="alerts" title="Alerts and settings"><svg><use href="#i-bell"/></svg></button>
+    <div class="dock-grow"></div>
+    <button id="btn-pair" title="Pair a server"><svg><use href="#i-plus"/></svg></button>
+  </nav>
+
+  <!-- server switcher -->
+  <div class="srv-wrap">
+    <button class="srv-pill float" id="srv-pill">
+      <span class="conn" id="conn-pill"><span class="dot"></span></span>
+      <span class="srv-name" id="srv-name">No server selected</span>
+      <span class="srv-mini" id="srv-mini"></span>
+      <span class="srv-chip time" id="srv-time" hidden></span>
+      <span class="srv-chip" id="srv-wipe" hidden></span>
+      <span class="srv-chip" id="srv-upkeep" hidden></span>
+      <svg class="chev"><use href="#i-down"/></svg>
+    </button>
+    <div class="srv-menu float" id="srv-menu" hidden>
+      <div class="srv-menu-head">
+        <div class="muted small" id="conn-text">Offline</div>
+        <div class="stats" id="srv-stats"></div>
+      </div>
+      <div class="menu-label">Saved servers</div>
+      <ul class="server-list" id="server-list"></ul>
+      <div class="empty-hint" id="no-servers">No servers yet.</div>
+      <button class="menu-add" id="btn-pair-2"><svg><use href="#i-plus"/></svg>Pair a server</button>
+      <div class="srv-menu-foot">
+        <div>
+          <div id="account-line" class="small">Steam: not linked</div>
+          <div class="small muted" id="push-status">Not signed in</div>
+        </div>
+        <button class="link-btn" id="btn-signout" hidden>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- team card -->
+  <aside class="map-team float" id="map-team"></aside>
+
+  <!-- layer chips -->
+  <div class="layers float">
+    <label><input type="checkbox" data-layer="grid" checked /><span>Grid</span></label>
+    <label><input type="checkbox" data-layer="monuments" checked /><span>Monuments</span></label>
+    <label><input type="checkbox" data-layer="events" checked /><span>Events</span></label>
+    <label><input type="checkbox" data-layer="shops" /><span>Shops</span></label>
+    <label><input type="checkbox" data-layer="nodes" checked /><span>Nodes</span></label>
+  </div>
+
+  <!-- event timers -->
+  <aside class="ev-card float" id="ev-card" hidden></aside>
+
+  <!-- quick node heatmap toggles -->
+  <div class="node-quick float" id="node-quick"></div>
+
+  <!-- zoom + cursor readout -->
+  <div class="map-hover float" id="map-hover"></div>
+  <div class="zoom float">
+    <button id="zoom-in" title="Zoom in"><svg><use href="#i-plus"/></svg></button>
+    <button id="zoom-out" title="Zoom out"><svg><use href="#i-minus"/></svg></button>
+    <button id="zoom-fit" title="Fit map"><svg><use href="#i-fit"/></svg></button>
+  </div>
+
+  <!-- slide-over panel -->
+  <section class="panel float" id="panel" hidden>
+    <header class="panel-head">
+      <h2 id="panel-title">Team</h2>
+      <button class="icon-btn" id="panel-close" title="Close"><svg><use href="#i-x"/></svg></button>
+    </header>
+    <div class="panel-body">
+      <div class="tab" id="tab-team"><div class="team-grid" id="team-grid"></div></div>
+
+      <div class="tab" id="tab-chat">
+        <div class="chat">
+          <div class="chat-log" id="chat-log"></div>
+          <form class="chat-input" id="chat-form">
+            <input id="chat-text" placeholder="Message your team" maxlength="128" autocomplete="off" />
+            <button class="btn primary" type="submit">Send</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="tab" id="tab-devices">
+        <p class="muted small">Pair Smart Switches, Smart Alarms and Storage Monitors in-game (hold E on the device, then Pair). They show up here.</p>
+        <div class="device-grid" id="device-grid"></div>
+        <div class="sec-label">Automations</div>
+        <div id="auto-list"></div>
+        <div class="auto-new" id="auto-new">
+          <div class="auto-line"><span>When</span><select id="auto-when"></select></div>
+          <div class="auto-line"><span>turn</span><select id="auto-switch"></select><select id="auto-value"><option value="1">on</option><option value="0">off</option></select></div>
+          <button class="btn small-btn" id="auto-add">Add rule</button>
+        </div>
+        <p class="muted small raid-note">Rules run while Recon is running, using your paired Smart Alarms and Smart Switches.</p>
+      </div>
+
+      <div class="tab" id="tab-raid">
+        <div class="raid-total">
+          <div class="raid-total-head">
+            <div><div class="muted small">Total sulfur</div><div class="raid-big" id="raid-sulfur">0</div></div>
+            <div class="raid-actions">
+              <button class="btn small-btn" id="raid-share" title="Post the plan in Rust+ team chat">Send to team</button>
+              <button class="link-btn" id="raid-clear">Clear</button>
+            </div>
+          </div>
+          <div class="raid-items" id="raid-items"></div>
+          <div class="raid-warn" id="raid-warn" hidden>Some targets can't be broken with the explosives you picked.</div>
+        </div>
+
+        <div class="sec-label">Raid path</div>
+        <div id="raid-path"></div>
+
+        <div class="sec-label">Add to path</div>
+        <div class="seg" id="raid-cats"></div>
+        <div class="target-grid" id="raid-targets"></div>
+
+        <div class="sec-label">Explosives to use <span>sulfur each</span></div>
+        <div class="ex-chips" id="raid-explosives"></div>
+
+        <div class="sec-label">Same path, one explosive only</div>
+        <div id="raid-compare"></div>
+
+        <p class="muted small raid-note">Hard-side damage from the Rust wiki. The planner picks the cheapest mix that fully breaks each target.</p>
+      </div>
+      <div class="tab" id="tab-nodes">
+        <div class="node-types" id="node-types"></div>
+        <div class="seg" id="node-mode"><button data-mode="heat">Heatmap</button><button data-mode="dots">Dots</button></div>
+
+        <p class="muted small node-note">The heatmap predicts where nodes spawn from this map's terrain: sulfur on desert, snow and rocky ground, metal in mountains and snow, stone almost everywhere. Finds your team logs make it more accurate.</p>
+
+        <div class="sec-label">Log a node where you're standing</div>
+        <div class="node-log" id="node-log">
+          <button class="btn" data-log="stone"><i style="background:#c4b5fd"></i>Stone</button>
+          <button class="btn" data-log="metal"><i style="background:#60a5fa"></i>Metal</button>
+          <button class="btn" data-log="sulfur"><i style="background:#facc15"></i>Sulfur</button>
+        </div>
+        <div class="node-help">
+          <b>From in game:</b> type <code>!stone</code>, <code>!metal</code> or <code>!sulfur</code> in team chat while standing at a node.
+          <b>On the map:</b> right-click any spot to log or remove a node. Everything is shared with your team.
+        </div>
+
+        <div class="sec-label">Hotspots</div>
+        <div id="node-hot"></div>
+
+        <div class="sec-label" id="node-recent-label">Recent finds</div>
+        <div id="node-recent"></div>
+        <button class="link-btn node-clear" id="node-clear">Clear nodes for this map</button>
+      </div>
+      <div class="tab" id="tab-shops">
+        <div class="search-row">
+          <div class="search-wrap"><svg><use href="#i-search"/></svg><input id="shop-q" class="search" autocomplete="off" /></div>
+          <button class="icon-btn bell" id="shop-watch" hidden><svg><use href="#i-bell"/></svg></button>
+        </div>
+        <div class="seg" id="shop-mode"><button data-mode="sell">Shops selling it</button><button data-mode="buy">Shops paying with it</button></div>
+        <div id="shop-results"></div>
+      </div>
+
+      <div class="tab" id="tab-players">
+        <div class="shop-stats">
+          <div><b id="pop-now">–</b><span>players now</span></div>
+          <div><b id="pop-queue">–</b><span>in queue</span></div>
+          <div><b id="pop-peak">–</b><span>peak <em id="pop-peak-when"></em></span></div>
+        </div>
+        <div class="seg" id="pop-range" style="margin-top:12px"><button data-h="24">Last 24 hours</button><button data-h="168">Last 7 days</button></div>
+        <canvas id="pop-chart" class="pop-chart"></canvas>
+        <div class="pop-legend"><span><i style="background:#3fd0ff"></i>Players</span><span><i style="background:#e879f9"></i>With queue</span><span><i style="background:#f2cf63"></i>Max</span></div>
+        <div class="sec-label">Typical day</div>
+        <div id="pop-pattern"></div>
+        <p class="muted small raid-note">Recon records the player count every 5 minutes while it's open, and keeps 14 days.</p>
+      </div>
+
+      <div class="tab" id="tab-alerts">
+        <div class="sec-label">Raid alarms</div>
+        <label class="toggle"><input type="checkbox" id="al-siren"><span></span>Loud siren in Recon when a Smart Alarm goes off</label>
+        <label class="toggle"><input type="checkbox" id="al-phone"><span></span>Also alert my phone (free ntfy app)</label>
+        <div class="phone-setup" id="al-phone-setup" hidden>
+          <ol>
+            <li>Install <b>ntfy</b> on your phone (App Store or Google Play).</li>
+            <li>Open it, tap <b>+</b>, and subscribe to this private channel:</li>
+          </ol>
+          <div class="topic-row"><code id="al-topic">…</code><button class="btn small-btn" id="al-copy">Copy</button></div>
+          <p class="muted small">Keep the name private: anyone who knows it can see your alerts. For alarms that ring even on silent, allow ntfy to override Do Not Disturb in its settings.</p>
+          <div class="btn-row"><button class="btn small-btn" id="al-test-phone">Send test to phone</button><button class="link-btn" id="al-new-topic">New channel name</button></div>
+        </div>
+        <div class="btn-row"><button class="btn small-btn" id="al-test-siren">Test the siren</button></div>
+
+        <div class="pc-only">
+          <div class="sec-label">Phone app</div>
+          <label class="toggle"><input type="checkbox" id="ph-enable"><span></span>Let my phone connect to Recon</label>
+          <p class="muted small" id="ph-restart-note" hidden>Restarting Recon…</p>
+          <div class="phone-setup" id="ph-body" hidden>
+            <ol class="ph-steps">
+              <li><b>Get a code</b>
+                <div class="code-row"><span class="pair-code" id="ph-code">––– –––</span><button class="btn small-btn" id="ph-code-btn">Get a code</button></div>
+                <div class="muted small" id="ph-code-exp"></div></li>
+              <li><b>At home:</b> on your iPhone, open <b>Safari</b> and go to this address, then enter the code:
+                <div class="addr" id="ph-lan"></div></li>
+              <li><b>Make it an app:</b> in Safari tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+              <li><b>Away from home:</b> install the free <b>Tailscale</b> app on this PC (tailscale.com) and on your iPhone, sign in to both with the same account, then on your phone use:
+                <div class="addr" id="ph-ts"></div></li>
+            </ol>
+            <div class="sec-label">Phones</div>
+            <div id="ph-list"></div>
+            <p class="muted small">While phone access is on, Recon keeps running in the background after you close this window, so your phone can still connect. Your PC has to stay on.</p>
+            <button class="link-btn" id="ph-quit">Quit Recon completely</button>
+          </div>
+        </div>
+
+        <div class="sec-label">Upkeep</div>
+        <div class="field-row"><span>Warn me when upkeep is under</span>
+          <select id="al-upkeep"><option value="2">2 hours</option><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></div>
+        <div id="al-upkeep-list"></div>
+
+        <div class="pc-only">
+          <div class="sec-label">Updates</div>
+          <div class="field-row"><span>Recon version</span><b id="up-version">–</b></div>
+          <label class="toggle"><input type="checkbox" id="up-auto"><span></span>Install updates automatically</label>
+          <div class="muted small" id="up-status" style="margin:6px 2px"></div>
+          <div class="btn-row"><button class="btn small-btn" id="up-check">Check for updates</button><button class="btn small-btn primary" id="up-install" hidden>Install update</button></div>
+        </div>
+
+        <div class="sec-label">Wipe schedule</div>
+        <div class="field-row"><span>This server wipes</span>
+          <select id="al-wipe"><option value="auto">Auto (from server info)</option><option value="weekly">Weekly</option><option value="biweekly">Every 2 weeks</option><option value="monthly">Monthly (forced only)</option></select></div>
+        <p class="muted small raid-note">The countdown on the server pill shows whichever comes first: the server's schedule or the monthly forced wipe (first Thursday, 7 PM London).</p>
+      </div>
+
+      <div class="tab" id="tab-craft">
+        <div class="seg" id="craft-mode"><button data-mode="craft">Craft</button><button data-mode="recycle">Recycle</button></div>
+        <div class="search-wrap"><svg><use href="#i-search"/></svg><input id="craft-q" class="search" autocomplete="off" /></div>
+        <div id="craft-opt"></div>
+        <div class="sec-label">List <button class="link-btn" id="craft-clear">Clear</button></div>
+        <div id="craft-list"></div>
+        <div id="craft-out"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- pairing modal -->
+  <div class="modal" id="pair-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-logo"><svg><use href="#logo"/></svg></div>
+      <h2>Pair a server</h2>
+      <ol class="steps" id="pair-steps">
+        <li data-step="creds">Set up push notifications</li>
+        <li data-step="login">Sign in with Steam (opens a window)</li>
+        <li data-step="listen">In Rust: press <b>ESC → Rust+ → Pair with server</b></li>
+      </ol>
+      <p class="muted small" id="pair-msg">Working…</p>
+      <div class="modal-actions">
+        <button class="btn" id="pair-relogin" hidden>Sign in again</button>
+        <button class="btn" id="pair-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="alarm-overlay" id="alarm-overlay" hidden>
+    <div class="alarm-card">
+      <div class="alarm-ring"><svg><use href="#i-bell"/></svg></div>
+      <div class="alarm-kicker">Raid alarm</div>
+      <h2 id="alarm-title">Smart Alarm</h2>
+      <p id="alarm-sub"></p>
+      <button class="btn primary" id="alarm-dismiss">Dismiss</button>
+    </div>
+  </div>
+
+  <div class="phone-login" id="phone-login" hidden>
+    <form class="pl-card" id="pl-form">
+      <div class="modal-logo"><svg><use href="#logo"/></svg></div>
+      <h2>Connect to Recon</h2>
+      <p class="muted">On your PC, open Recon → <b>Alerts and settings</b> → <b>Phone app</b> → <b>Get a code</b>, and enter it here.</p>
+      <input id="pl-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" />
+      <div class="pl-err" id="pl-err"></div>
+      <button class="btn primary" type="submit">Connect</button>
+    </form>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+  <script src="raid.js"></script>
+  <script src="nodes.js"></script>
+  <script src="vending.js"></script>
+  <script src="craft.js"></script>
+  <script src="extras.js"></script>
+  <script src="population.js"></script>
+  <script src="phone.js"></script>
+  <script src="events.js"></script>
+  <script src="automations.js"></script>
+</body>
+</html>
