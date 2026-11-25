@@ -260,6 +260,9 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 /* ----------------------------------------------------------- node heatmap */
 .node-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
 .node-types.four { grid-template-columns: repeat(2, 1fr); }
+.node-base { margin: 2px 4px 2px; line-height: 1.5; }
+.node-base b { color: var(--accent); }
+#map-canvas.picking { cursor: crosshair; }
 .node-types.four button { flex-direction: row; align-items: center; gap: 8px; }
 .node-types button {
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px;

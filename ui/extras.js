@@ -187,7 +187,7 @@
     note: { color: "#cbd5e1", name: "Note", glyph: (x, y) => { ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); } },
   };
   let pins = [];
-  const setPins = (list) => { pins = list || []; draw(); };
+  const setPins = (list) => { pins = list || []; draw(); window.Nodes?.render(); };
   listen("pins-changed", ({ payload }) => setPins(payload));
   window.drawPins = () => {
     for (const p of pins) {
@@ -202,8 +202,9 @@
   window.Pins = {
     kinds: PIN_STYLE,
     near: (wx, wy, r = 40) => pins.filter((p) => Math.hypot(p.x - wx, p.y - wy) < r).sort((a, b) => Math.hypot(a.x - wx, a.y - wy) - Math.hypot(b.x - wx, b.y - wy))[0],
-    async add(kind, wx, wy) {
-      const label = prompt(`Label for this ${PIN_STYLE[kind].name.toLowerCase()} marker (optional):`, "") ?? null;
+    base: () => pins.find((p) => p.kind === "base") ?? null,
+    async add(kind, wx, wy, presetLabel) {
+      const label = presetLabel ?? prompt(`Label for this ${PIN_STYLE[kind].name.toLowerCase()} marker (optional):`, "") ?? null;
       if (label === null) return;
       if (S.demo) return setPins([...pins, { kind, label, x: Math.round(wx), y: Math.round(wy), by: "you", ts: Date.now() }]);
       try { setPins(await invoke("add_pin", { kind, label, x: wx, y: wy })); toast("Marker added", "Shared with your team"); }

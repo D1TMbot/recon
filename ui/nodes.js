@@ -196,14 +196,14 @@
   }
 
   // -------------------------------------------------- best areas + routes
-  function findPeaks(type, max = 14) {
+  function findPeaks(type, max = 14, minV = 0.55, spacing = 260) {
     const p = predict();
     if (!p) return [];
     const d = p.maps[TIDX[type]], { W, H } = p, sx = W / S.map.width;
     const peaks = [];
     for (let y = 3; y < H - 3; y += 2) for (let x = 3; x < W - 3; x += 2) {
       const v = d[y * W + x];
-      if (v < 0.55) continue;
+      if (v < minV) continue;
       let top = true;
       for (let dy = -4; dy <= 4 && top; dy++) for (let dx = -4; dx <= 4; dx++) {
         const yy = y + dy, xx = x + dx;
@@ -216,12 +216,14 @@
     }
     peaks.sort((a, b) => b.rv - a.rv);
     const picked = [];
-    for (const pk of peaks) { if (picked.every((q) => Math.hypot(q.x - pk.x, q.y - pk.y) > 260)) picked.push(pk); if (picked.length >= max) break; }
+    for (const pk of peaks) { if (picked.every((q) => Math.hypot(q.x - pk.x, q.y - pk.y) > spacing)) picked.push(pk); if (picked.length >= max) break; }
     return picked;
   }
 
   let route = null; // { type, start, stops: [{x, y, v}], km }
   function planRoute(type) {
+    const base = window.Pins?.base();
+    if (base) return planBaseRoute(type, base);
     const picked = findPeaks(type);
     if (!picked.length) return null;
     const me = (S.team?.members ?? []).find((m) => m.steamId === S.selfSteamId && Number.isFinite(m.x)) ?? (S.team?.members ?? []).find((m) => Number.isFinite(m.x));
@@ -238,18 +240,44 @@
     }
     return { type, start, stops, km };
   }
+  // With a base set: the best spots within about 1 km of it, as a loop that
+  // ends back at the base (widens the search if the area around it is poor).
+  function planBaseRoute(type, base) {
+    const all = findPeaks(type, 200, 0.06, 130); // include smaller local hotspots, not just the map's best
+    let near = [];
+    for (const R of [600, 850, 1100]) {
+      near = all.map((pk) => ({ ...pk, d: Math.hypot(pk.x - base.x, pk.y - base.y) })).filter((pk) => pk.d >= 50 && pk.d <= R);
+      if (near.length >= 3) break;
+    }
+    if (!near.length) return null;
+    // rich and close beats rich and far
+    near.forEach((pk) => (pk.score = pk.rv / (1 + (pk.d / 350) ** 2)));
+    near.sort((a, b) => b.score - a.score);
+    const chosen = near.slice(0, 5);
+    // go around the base in a circle so the path doesn't cross itself, starting with the nearest
+    chosen.forEach((pk) => (pk.a = Math.atan2(pk.y - base.y, pk.x - base.x)));
+    chosen.sort((a, b) => a.a - b.a);
+    const first = chosen.reduce((m, pk, i) => (pk.d < chosen[m].d ? i : m), 0);
+    const stops = [...chosen.slice(first), ...chosen.slice(0, first)];
+    let km = 0, cur = base;
+    for (const pk of stops) { km += Math.hypot(pk.x - cur.x, pk.y - cur.y) / 1000; cur = pk; }
+    km += Math.hypot(cur.x - base.x, cur.y - base.y) / 1000;
+    return { type, start: { x: base.x, y: base.y }, stops, km, loop: true };
+  }
   function toggleRoute(type) {
     if (route && route.type === type) { route = null; render(); draw(); return; }
     route = planRoute(type);
     if (!route) { toast("No route yet", "The map is still loading, or there are no strong spots for this type."); return; }
     if (!N.on[type]) toggleType(type);
-    toast(`${TY[type].name} route planned`, `${route.stops.length} stops, about ${route.km.toFixed(1)} km. Follow the numbers on the map.`, "ok");
+    toast(`${TY[type].name} route planned`, route.loop
+      ? `${route.stops.length} stops near your base and back, about ${route.km.toFixed(1)} km.`
+      : `${route.stops.length} stops, about ${route.km.toFixed(1)} km. Tip: set your base and routes will stay near it.`, "ok");
     render(); draw();
   }
   window.drawRoute = () => {
     if (!route || !S.map) return;
     const col = TY[route.type].color;
-    const pts = [route.start, ...route.stops].map((p) => toScreen(p.x, p.y));
+    const pts = [route.start, ...route.stops, ...(route.loop ? [route.start] : [])].map((p) => toScreen(p.x, p.y));
     ctx.setLineDash([7, 6]); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(8,12,19,.7)";
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
     ctx.lineWidth = 2; ctx.strokeStyle = col;
@@ -360,6 +388,11 @@
         <i></i><span>${t.name}</span>
       </button>`).join("");
     $("#node-icons").checked = N.icons;
+    const base = window.Pins?.base();
+    $("#node-base").innerHTML = base
+      ? `Base at <b>${gridLabel(base.x, base.y)}</b>. Routes stay near it and end back there.`
+      : `No base set. Routes start from where you are.`;
+    $("#node-setbase").textContent = base ? "Move my base" : "Set my base";
     $("#node-route").textContent = route ? "Clear route" : `Plan a ${TY[routeType()].name.toLowerCase()} route`;
 
     // best areas for the shown view
@@ -379,6 +412,29 @@
     const b = e.target.closest("[data-type]"); if (b) toggleType(b.dataset.type);
   };
   $("#node-icons").onchange = (e) => { N.icons = e.target.checked; saveView(); draw(); };
+  // "Set my base": the next click on the map places (or moves) the base marker
+  let pickingBase = false;
+  $("#node-setbase").onclick = () => {
+    if (!S.map || !window.Pins) return toast("Map not loaded yet", "Connect to a server first.");
+    pickingBase = true;
+    canvas.classList.add("picking");
+    openPanel("map");
+    toast("Click your base on the map", "Press Esc to cancel.");
+  };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pickingBase) { pickingBase = false; canvas.classList.remove("picking"); } });
+  let downAt = null;
+  canvas.addEventListener("mousedown", (e) => { downAt = [e.clientX, e.clientY]; });
+  canvas.addEventListener("mouseup", async (e) => {
+    if (!pickingBase || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // a drag isn't a pick
+    pickingBase = false; canvas.classList.remove("picking");
+    const r = canvas.getBoundingClientRect();
+    const [wx, wy] = imgToWorld((e.clientX - r.left - S.view.x) / S.view.scale, (e.clientY - r.top - S.view.y) / S.view.scale);
+    const old = Pins.base();
+    if (old) await Pins.remove(old);
+    await Pins.add("base", wx, wy, "Our base");
+    route = null; render(); draw();
+    toast("Base set", `At ${gridLabel(wx, wy)}. Routes will now stay near it.`, "ok");
+  });
   $("#node-route").onclick = () => { if (route) { route = null; render(); draw(); } else toggleRoute(routeType()); };
   $("#node-hot").onclick = (e) => { const b = e.target.closest(".hot-row"); if (b) centerOn(+b.dataset.x, +b.dataset.y, Math.max(S.view.scale, 1.8)); };
   // keep the quick bar in sync when the "Nodes" layer chip is switched
