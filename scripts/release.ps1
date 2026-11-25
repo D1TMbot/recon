@@ -21,17 +21,36 @@ $dist = Join-Path $root "dist"; New-Item -ItemType Directory -Force $dist | Out-
 $stage = Join-Path $env:TEMP "recon-release\Recon"
 Remove-Item (Split-Path $stage) -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $stage | Out-Null
-Get-ChildItem $root -Force | Where-Object { $_.Name -notin @("node_modules", ".git", "dist", "scripts", ".gitignore") } |
+Get-ChildItem $root -Force | Where-Object { $_.Name -notin @(".git", "dist", "scripts", ".gitignore", "runtime") } |
   Copy-Item -Destination $stage -Recurse -Force
 $zip = Join-Path $dist "Recon-v$Version.zip"
 Remove-Item $zip -Force -ErrorAction SilentlyContinue
 Compress-Archive -Path $stage -DestinationPath $zip
 Write-Host "Built $zip"
 
+# 2b) Windows installer (Recon-Setup.exe) with Node.js bundled, if Inno Setup is installed
+$iscc = @((Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"), (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+$setup = $null
+if ($iscc) {
+  $inst = Join-Path $env:TEMP "recon-installer\Recon"
+  Remove-Item (Split-Path $inst) -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force $inst | Out-Null
+  Copy-Item (Join-Path $stage "*") $inst -Recurse -Force
+  $nodeDir = Split-Path (Get-Command node).Source
+  New-Item -ItemType Directory -Force (Join-Path $inst "runtime") | Out-Null
+  Copy-Item (Join-Path $nodeDir "node.exe") (Join-Path $inst "runtime") -Force
+  if (Test-Path (Join-Path $nodeDir "LICENSE")) { Copy-Item (Join-Path $nodeDir "LICENSE") (Join-Path $inst "runtime\NODE-LICENSE.txt") -Force }
+  & $iscc /Q "/DAppVersion=$Version" "/DSourceDir=$inst" "/DOutDir=$dist" (Join-Path $root "scripts\recon.iss")
+  if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
+  $setup = Join-Path $dist "Recon-Setup.exe"
+  Write-Host "Built $setup"
+} else { Write-Host "Inno Setup not found: skipping the installer" }
+
 # 3) git + GitHub release
 git add -A
 git commit -m "Recon v$Version`n`n$Notes`n`nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" | Out-Null
 git tag "v$Version"
 git push origin HEAD --tags
-gh release create "v$Version" $zip --title "Recon v$Version" --notes $Notes
+$assets = @($zip) + @($setup | Where-Object { $_ })
+gh release create "v$Version" @assets --title "Recon v$Version" --notes $Notes
 Write-Host "Published Recon v$Version"

@@ -63,10 +63,11 @@ export async function applyUpdate(info, { onStatus } = {}) {
     const newPkg = JSON.parse(fs.readFileSync(path.join(src, "package.json"), "utf8"));
     if (!newer(newPkg.version, currentVersion())) throw new Error("Downloaded version isn't newer");
     const depsChanged = JSON.stringify(newPkg.dependencies) !== JSON.stringify(pkg().dependencies);
+    const bundlesModules = fs.existsSync(path.join(src, "node_modules")); // release zips carry their libraries
 
     onStatus?.("Installing…");
-    fs.cpSync(src, APP_DIR, { recursive: true, force: true, filter: (p) => !p.split(path.sep).includes("node_modules") });
-    if (depsChanged) {
+    fs.cpSync(src, APP_DIR, { recursive: true, force: true });
+    if (depsChanged && !bundlesModules) {
       onStatus?.("Updating libraries…");
       await run(process.platform === "win32" ? "npm.cmd" : "npm", ["install", "--no-audit", "--no-fund", "--loglevel=error"], { cwd: APP_DIR, shell: true });
     }
