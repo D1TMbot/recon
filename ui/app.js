@@ -100,10 +100,11 @@ function stopTimers() {
   S.timers = [];
 }
 
-async function selectServer(id) {
+async function selectServer(id, { reconnect = false } = {}) {
   stopTimers();
-  S.active = id; S.connected = false; S.map = null; S.team = null; S.markers = []; S.chat = [];
-  S.knownEvents.clear(); S.firstMarkers = true;
+  const keep = reconnect && S.active === id && S.map; // reconnecting: keep what's on screen
+  S.active = id; S.connected = false;
+  if (!keep) { S.map = null; S.team = null; S.markers = []; S.chat = []; S.knownEvents.clear(); S.firstMarkers = true; }
   const srv = S.servers.find((s) => s.id === id);
   $("#srv-name").textContent = srv?.name ?? id;
   $("#srv-stats").innerHTML = "";
@@ -115,7 +116,8 @@ async function selectServer(id) {
     S.connected = true;
     setConn("ok", "Connected");
     renderStats();
-    await Promise.allSettled([loadMap(), loadTeam(), loadMarkers(), loadChat()]);
+    reconnectTries = 0;
+    await Promise.allSettled([keep ? Promise.resolve() : loadMap(), loadTeam(), loadMarkers(), loadChat()]);
     window.Nodes?.load();
     window.Pins?.onConnect();
     window.Events?.onConnect();
@@ -125,6 +127,12 @@ async function selectServer(id) {
     loadDevices();
   } catch (e) {
     setConn("bad", "Failed");
+    if (keep) { // lost connection earlier: keep trying quietly
+      const wait = Math.min(60, 5 * 2 ** reconnectTries++);
+      setConn("bad", `Couldn't reconnect. Trying again in ${wait}s…`);
+      setTimeout(() => { if (S.active === id && !S.connected) selectServer(id, { reconnect: true }); }, wait * 1000);
+      return;
+    }
     toast("Couldn't connect", String(e), "bad");
     $("#map-empty").innerHTML = `<div style="text-align:center"><p>Couldn't connect to ${esc(srv?.name ?? id)}.</p><p class="muted small">${esc(String(e))}</p><button class="btn" id="cta-retry">Try again</button></div>`;
     $("#cta-retry").onclick = () => selectServer(id);
@@ -798,12 +806,14 @@ listen("rp-entity-changed", async ({ payload }) => {
   renderDevice(ent.entityId, ent.entityType, payload.payload);
   if (ent.entityType === 2 && payload.payload.value) toast(`${ent.name} triggered!`, "", "bad");
 });
+let reconnectTries = 0;
 listen("rp-disconnected", ({ payload }) => {
   if (payload !== S.active) return;
   S.connected = false;
   stopTimers();
-  setConn("bad", "Disconnected. Retrying…");
-  setTimeout(() => { if (S.active === payload && !S.connected) selectServer(payload); }, 5000);
+  const wait = Math.min(60, 5 * 2 ** reconnectTries++); // 5s, 10s, 20s, 40s, 60s…
+  setConn("bad", `Connection lost. Reconnecting in ${wait}s…`);
+  setTimeout(() => { if (S.active === payload && !S.connected) selectServer(payload, { reconnect: true }); }, wait * 1000);
 });
 
 // ------------------------------------------------------------------ boot

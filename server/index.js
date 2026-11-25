@@ -408,9 +408,23 @@ const commands = {
   async disconnect() { client?.close(); client = null; active = null; clearInterval(upkeepTimer); clearInterval(popTimer); clearInterval(timeTimer); },
 
   async get_map() {
-    const m = await activeClient().getMap();
+    const c = activeClient();
+    const key = active ? `${active.server.id}|${active.mapKey}`.replace(/[^\w.-]+/g, "_") : null;
+    const file = key && path.join(store.DATA_DIR, "maps", `${key}.json`);
+    if (file) { try { return { ...JSON.parse(fs.readFileSync(file, "utf8")), cached: true }; } catch {} }
+    const m = await c.getMap();
     const { jpgImage, ...rest } = m;
-    return { ...rest, jpgBase64: jpgImage }; // bytes already base64 from protobufjs
+    const out = { ...rest, jpgBase64: jpgImage }; // bytes already base64 from protobufjs
+    if (file) {
+      try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        // keep only the newest few maps
+        const dir = path.dirname(file), olds = fs.readdirSync(dir).map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs })).sort((a, b) => b.t - a.t);
+        for (const o of olds.slice(8)) fs.rmSync(path.join(dir, o.f), { force: true });
+        fs.writeFileSync(file, JSON.stringify(out));
+      } catch {}
+    }
+    return out;
   },
   get_team: () => activeClient().getTeamInfo(),
   get_markers: () => activeClient().getMapMarkers(),

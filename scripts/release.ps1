@@ -30,7 +30,7 @@ Write-Host "Built $zip"
 
 # 3) git + GitHub release
 git add -A
-git commit -m "Recon v$Version`n`n$Notes" | Out-Null
+git commit -m "Recon v$Version`n`n$Notes`n`nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" | Out-Null
 git tag "v$Version"
 git push origin HEAD --tags
 gh release create "v$Version" $zip --title "Recon v$Version" --notes $Notes
