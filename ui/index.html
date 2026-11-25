@@ -177,28 +177,13 @@
         <p class="muted small raid-note">Hard-side damage from the Rust wiki. The planner picks the cheapest mix that fully breaks each target.</p>
       </div>
       <div class="tab" id="tab-nodes">
-        <div class="node-types" id="node-types"></div>
-        <div class="seg" id="node-mode"><button data-mode="heat">Heatmap</button><button data-mode="dots">Dots</button></div>
+        <div class="node-types four" id="node-types"></div>
+        <p class="muted small node-note">Predicted from this map's terrain: sulfur on desert, snow and rocky ground, metal in mountains and snow, stone almost everywhere, and all three mixed together in rocky areas. Rust doesn't share real node positions (they respawn in random spots), so treat this as where to look.</p>
+        <label class="toggle"><input type="checkbox" id="node-icons"><span></span>Show likely node spots when zoomed in</label>
+        <div class="btn-row"><button class="btn small-btn" id="node-route">Plan a route</button></div>
 
-        <p class="muted small node-note">The heatmap predicts where nodes spawn from this map's terrain: sulfur on desert, snow and rocky ground, metal in mountains and snow, stone almost everywhere. Finds your team logs make it more accurate.</p>
-
-        <div class="sec-label">Log a node where you're standing</div>
-        <div class="node-log" id="node-log">
-          <button class="btn" data-log="stone"><i style="background:#c4b5fd"></i>Stone</button>
-          <button class="btn" data-log="metal"><i style="background:#60a5fa"></i>Metal</button>
-          <button class="btn" data-log="sulfur"><i style="background:#facc15"></i>Sulfur</button>
-        </div>
-        <div class="node-help">
-          <b>From in game:</b> type <code>!stone</code>, <code>!metal</code> or <code>!sulfur</code> in team chat while standing at a node.
-          <b>On the map:</b> right-click any spot to log or remove a node. Everything is shared with your team.
-        </div>
-
-        <div class="sec-label">Hotspots</div>
+        <div class="sec-label">Best areas</div>
         <div id="node-hot"></div>
-
-        <div class="sec-label" id="node-recent-label">Recent finds</div>
-        <div id="node-recent"></div>
-        <button class="link-btn node-clear" id="node-clear">Clear nodes for this map</button>
       </div>
       <div class="tab" id="tab-shops">
         <div class="search-row">

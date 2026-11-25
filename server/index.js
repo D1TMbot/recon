@@ -16,7 +16,6 @@ import { RustPlusClient } from "./rustplus.js";
 import { openAppWindow, openSteamLogin, closeSteamLogin } from "./browser.js";
 import { spawn } from "node:child_process";
 const spawnNode = (args) => spawn(process.execPath, args, { cwd: process.cwd(), detached: true, stdio: "ignore", windowsHide: true });
-import { NODE_TYPES, parseNodeMessage, codedMessage, addNode } from "./nodes.js";
 import { checkForUpdate, applyUpdate, currentVersion } from "./updater.js";
 import { newTopic, phonePush, PIN_KINDS, parsePinMessage, pinMessage, unpinMessage, upsertPin, removePinAt, upkeepLeft } from "./extras.js";
 
@@ -395,7 +394,6 @@ const commands = {
     const info = await c.getInfo();
     client = c;
     active = { server, mapKey: `${info.seed}:${info.mapSize}`, mapSize: info.mapSize };
-    server.nodes ??= [];
     server.pins ??= [];
     cfg.lastServer = id;
     save();
@@ -435,58 +433,13 @@ const commands = {
   get_entity_info: ({ entityId }) => activeClient().getEntityInfo(String(entityId)),
   set_entity_value: ({ entityId, value }) => activeClient().setEntityValue(String(entityId), !!value),
 
-  // ---- node heatmap
-  get_nodes: () => currentNodes(),
-  async log_node({ type, x, y }) {
-    if (!NODE_TYPES.includes(type)) throw new Error("Unknown node type");
-    const c = activeClient();
-    if (x == null || y == null) {
-      // "at my position": use our own player from fresh team info
-      const me = (await c.getTeamInfo()).members.find((m) => m.steamId === cfg.steamId);
-      if (!me) throw new Error("Couldn't find your player on this server");
-      x = me.x; y = me.y;
-    }
-    storeNode(type, x, y, "you");
-    // share with the team; other Recon users parse the coded message
-    c.sendTeamMessage(codedMessage(type, x, y, active.mapSize)).catch(() => {});
-    return currentNodes();
-  },
-  remove_node({ ts }) {
-    if (!active) return [];
-    active.server.nodes = active.server.nodes.filter((n) => n.ts !== ts);
-    save(); emit("nodes-changed", currentNodes());
-    return currentNodes();
-  },
-  clear_nodes() {
-    if (!active) return [];
-    active.server.nodes = active.server.nodes.filter((n) => n.map !== active.mapKey);
-    save(); emit("nodes-changed", []);
-    return [];
-  },
 };
 
-// ------------------------------------------------------------------ nodes
-function currentNodes() {
-  if (!active) return [];
-  return (active.server.nodes ?? []).filter((n) => n.map === active.mapKey);
-}
-function storeNode(type, x, y, by) {
-  if (!active) return;
-  const added = addNode(active.server.nodes, { t: type, x: Math.round(x), y: Math.round(y), ts: Date.now(), by, map: active.mapKey });
-  if (added) { save(); emit("nodes-changed", currentNodes()); }
-}
-async function onTeamMessage(c, msg) {
+// --------------------------------------------------------------- team chat
+// Recon only listens to team chat for shared map markers ("[Recon] pin ...").
+function onTeamMessage(c, msg) {
   const pin = parsePinMessage(msg.message);
-  if (pin && client === c) return applyPin(pin, msg.name);
-  const parsed = parseNodeMessage(msg.message);
-  if (!parsed || client !== c) return;
-  if (parsed.x != null) return storeNode(parsed.type, parsed.x, parsed.y, msg.name);
-  // in-game "!sulfur": log at the sender's current position
-  try {
-    const team = await c.getTeamInfo();
-    const m = team.members.find((p) => p.steamId === String(msg.steamId));
-    if (m) storeNode(parsed.type, m.x, m.y, msg.name);
-  } catch {}
+  if (pin && client === c) applyPin(pin, msg.name);
 }
 
 // ------------------------------------------------------------ phone access

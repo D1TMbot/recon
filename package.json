@@ -1,7 +1,7 @@
 {
   "name": "recon",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Recon - a companion app for the game Rust: live map, team, raid alarms, heatmaps, raid planner",
   "type": "module",
   "main": "server/index.js",

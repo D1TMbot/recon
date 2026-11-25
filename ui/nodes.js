@@ -1,31 +1,31 @@
 // Node heatmap: where stone / metal / sulfur nodes are likely to spawn on this
-// map, predicted from the terrain in the map image, plus any finds your team
-// logs (in-game "!sulfur" etc., Recon logs, right-clicking the map).
+// map, predicted from the terrain in the map image. Rust+ doesn't share node
+// positions (and nodes respawn in random spots), so everything here is an
+// estimate: heatmaps per type plus an "All ores" view, and when zoomed in,
+// faded icons showing likely spots in the mix the terrain suggests.
 (() => {
   const TYPES = [
     { id: "stone", name: "Stone", color: "#c4b5fd", lo: [124, 58, 237], hi: [233, 226, 255] },
     { id: "metal", name: "Metal", color: "#60a5fa", lo: [37, 99, 235], hi: [165, 243, 252] },
     { id: "sulfur", name: "Sulfur", color: "#facc15", lo: [202, 138, 4], hi: [254, 249, 195] },
+    { id: "all", name: "All ores", color: "#5eead4", lo: [13, 148, 136], hi: [204, 251, 241] },
   ];
+  const ORES = TYPES.slice(0, 3);
   const TY = Object.fromEntries(TYPES.map((t) => [t.id, t]));
-  const KEY = "recon.nodes.view";
+  const TIDX = { stone: 0, metal: 1, sulfur: 2, all: 3 };
+  const KEY = "recon.nodes.view2";
   const view = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
   const N = {
-    nodes: [],
-    on: view.on || { stone: false, metal: false, sulfur: false },
-    mode: view.mode || "heat",
+    on: view.on || { stone: false, metal: false, sulfur: false, all: false },
+    icons: view.icons ?? true,
     heat: null, // cached { key, canvas }
   };
-  const saveView = () => localStorage.setItem(KEY, JSON.stringify({ on: N.on, mode: N.mode }));
-  const fmtAgo = (ts) => { const s = (Date.now() - ts) / 1000; return s < 60 ? "now" : s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`; };
-
-  function setNodes(list) { N.nodes = list || []; N.heat = null; render(); draw(); }
+  const saveView = () => localStorage.setItem(KEY, JSON.stringify({ on: N.on, icons: N.icons }));
+  const anyOn = () => TYPES.some((t) => N.on[t.id]);
 
   // ---------------------------------------------------- terrain prediction
-  // Rust+ doesn't share where nodes spawn, so Recon estimates it from the map
-  // image itself: the biome from its colour (snow, desert, grass, forest, rock),
-  // mountains from the hill shading, and no nodes on water, beaches or
-  // monuments. Logged finds are added on top and count for a lot more.
+  // Biome from the map colour (snow, desert, grass, forest, rock), mountains
+  // from the hill shading, and no nodes on water, beaches or monuments.
   const PW = 420; // analysis resolution (pixels across the map image)
   //               stone metal sulfur
   const BIOME_W = [
@@ -38,8 +38,7 @@
     null,                 // 6 beach
   ];
   const RUGGED_K = [1.3, 1.6, 1.2]; // how much cliffs / mountains boost each type
-  const TIDX = { stone: 0, metal: 1, sulfur: 2 };
-  let pred = null; // { img, W, H, maps: [Float32Array x3] }
+  let pred = null; // { img, W, H, raw: [Float32Array x3], maps: [Float32Array x4] }
 
   function boxBlur(src, W, H, r, passes) {
     let a = src, b = new Float32Array(a.length);
@@ -62,6 +61,15 @@
       }
     }
     return a;
+  }
+  // relative scale: an average spot on this map = 0, the best ~2% = 1
+  function relative(src) {
+    const d = Float32Array.from(src);
+    const sorted = Array.from(d).filter((v) => v > 0.02).sort((a, b) => a - b);
+    const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] || 0;
+    const lo = at(0.55), hi = Math.max(lo + 1e-6, at(0.985));
+    for (let i = 0; i < d.length; i++) { const v = Math.min(1, Math.max(0, (d[i] - lo) / (hi - lo))); d[i] = Math.pow(v, 1.4); }
+    return d;
   }
 
   function predict() {
@@ -118,34 +126,80 @@
           if ((x - cx) ** 2 + (y - cy) ** 2 <= rr * rr) blocked[y * W + x] = 1;
     }
 
-    // 4) per-type density, smoothed and normalised so the top areas glow
-    const maps = [0, 1, 2].map((t) => {
+    // 4) raw density per type (for the icons) and relative maps (for the heatmaps)
+    const raw = [0, 1, 2].map((t) => {
       const d = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const w = BIOME_W[cls[i]];
         if (!w || blocked[i]) continue;
         d[i] = w[t] * (0.55 + RUGGED_K[t] * rug[i]);
       }
-      boxBlur(d, W, H, 3, 2);
-      // relative scale: an average spot on this map = 0, the best ~2% = 1,
-      // so the heatmap shows where it's notably better rather than everywhere
-      const sorted = Array.from(d).filter((v) => v > 0.02).sort((a, b) => a - b);
-      const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] || 0;
-      const lo = at(0.55), hi = Math.max(lo + 1e-6, at(0.985));
-      for (let i = 0; i < n; i++) { const v = Math.min(1, Math.max(0, (d[i] - lo) / (hi - lo))); d[i] = Math.pow(v, 1.4); }
-      return d;
+      return boxBlur(d, W, H, 3, 2);
     });
-    pred = { img: S.map.img, W, H, maps };
+    const total = new Float32Array(n);
+    for (let i = 0; i < n; i++) total[i] = raw[0][i] + raw[1][i] + raw[2][i];
+    const maps = [...raw.map(relative), relative(total)];
+    pred = { img: S.map.img, W, H, raw, total, maps, icons: null };
     return pred;
   }
 
-  // ------------------------------------------------------------ farm route
-  let route = null; // { type, start, stops: [{x, y, v}], km }
-  function planRoute(type) {
+  // ------------------------------------------------- predicted node icons
+  // A fixed (per map) scatter of likely node spots: more of them where the
+  // terrain is richer, each one stone/metal/sulfur in the mix the terrain
+  // suggests. Seeded, so they don't jump around between loads.
+  function predictedIcons() {
     const p = predict();
-    if (!p) return null;
+    if (!p) return [];
+    if (p.icons) return p.icons;
+    const { W, H, raw, total } = p, sx = W / S.map.width;
+    let seed = 0; for (const ch of `${S.info?.seed ?? 0}:${mapSize()}`) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const STEP = 34; // metres between candidate spots
+    const cand = [];
+    for (let wy = STEP / 2; wy < mapSize(); wy += STEP) for (let wx = STEP / 2; wx < mapSize(); wx += STEP) {
+      const x = wx + (rand() - 0.5) * STEP * 0.9, y = wy + (rand() - 0.5) * STEP * 0.9;
+      const [ix, iy] = worldToImg(x, y), px = Math.round(ix * sx), py = Math.round(iy * sx);
+      if (px < 0 || py < 0 || px >= W || py >= H) continue;
+      const i = py * W + px, s = total[i];
+      if (s <= 0.05) continue;
+      cand.push({ x, y, i, w: s * s * s, r: rand(), t: rand() }); // cubed: nodes bunch up in the rich areas
+    }
+    const target = Math.round((mapSize() / 1000) ** 2 * 165); // roughly Rust's ore node count for a map this size
+    const sumW = cand.reduce((a, c) => a + c.w, 0) || 1, k = target / sumW;
+    const out = [];
+    for (const c of cand) {
+      if (c.r > Math.min(0.95, c.w * k)) continue;
+      // pick the type in proportion to the local mix (sharpened a little)
+      const ws = [0, 1, 2].map((t) => raw[t][c.i] ** 1.6), sw = ws[0] + ws[1] + ws[2];
+      let acc = 0, type = 0;
+      for (let t = 0; t < 3; t++) { acc += ws[t] / sw; if (c.t <= acc) { type = t; break; } type = t; }
+      out.push({ x: c.x, y: c.y, type: ORES[type].id });
+    }
+    p.icons = out;
+    return out;
+  }
+  function drawIcons(ctx, px) {
+    const pxPerM = ((S.map.width - 2 * S.map.oceanMargin) / mapSize()) * S.view.scale;
+    if (pxPerM * 34 < 9) return; // only once zoomed in enough that they don't blur together
+    const show = N.on.all ? ORES.map((t) => t.id) : ORES.filter((t) => N.on[t.id]).map((t) => t.id);
+    ctx.globalAlpha = 0.78;
+    for (const ic of predictedIcons()) {
+      if (!show.includes(ic.type)) continue;
+      const [x, y] = worldToImg(ic.x, ic.y), r = Math.min(7.5, 3.4 + pxPerM * 1.3) * px; // grow a bit as you zoom in
+      ctx.fillStyle = TY[ic.type].color; ctx.strokeStyle = "rgba(8,12,19,.85)"; ctx.lineWidth = 1.3 * px;
+      ctx.beginPath(); // small rock shape
+      ctx.moveTo(x - r, y + r * 0.55); ctx.lineTo(x - r * 0.75, y - r * 0.5); ctx.lineTo(x - r * 0.1, y - r);
+      ctx.lineTo(x + r * 0.8, y - r * 0.55); ctx.lineTo(x + r, y + r * 0.4); ctx.lineTo(x + r * 0.2, y + r * 0.85); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // -------------------------------------------------- best areas + routes
+  function findPeaks(type, max = 14) {
+    const p = predict();
+    if (!p) return [];
     const d = p.maps[TIDX[type]], { W, H } = p, sx = W / S.map.width;
-    // local maxima of the predicted map
     const peaks = [];
     for (let y = 3; y < H - 3; y += 2) for (let x = 3; x < W - 3; x += 2) {
       const v = d[y * W + x];
@@ -157,11 +211,18 @@
       }
       if (!top) continue;
       const [wx, wy] = imgToWorld(x / sx, y / sx);
-      peaks.push({ x: wx, y: wy, v });
+      const rawMap = type === "all" ? p.total : p.raw[TIDX[type]];
+      peaks.push({ x: wx, y: wy, v, rv: rawMap[y * W + x] }); // rv: uncapped richness, for ranking
     }
-    peaks.sort((a, b) => b.v - a.v);
+    peaks.sort((a, b) => b.rv - a.rv);
     const picked = [];
-    for (const pk of peaks) { if (picked.every((q) => Math.hypot(q.x - pk.x, q.y - pk.y) > 260)) picked.push(pk); if (picked.length >= 14) break; }
+    for (const pk of peaks) { if (picked.every((q) => Math.hypot(q.x - pk.x, q.y - pk.y) > 260)) picked.push(pk); if (picked.length >= max) break; }
+    return picked;
+  }
+
+  let route = null; // { type, start, stops: [{x, y, v}], km }
+  function planRoute(type) {
+    const picked = findPeaks(type);
     if (!picked.length) return null;
     const me = (S.team?.members ?? []).find((m) => m.steamId === S.selfSteamId && Number.isFinite(m.x)) ?? (S.team?.members ?? []).find((m) => Number.isFinite(m.x));
     const start = me ? { x: me.x, y: me.y } : { x: mapSize() / 2, y: mapSize() / 2 };
@@ -178,12 +239,12 @@
     return { type, start, stops, km };
   }
   function toggleRoute(type) {
-    if (route && route.type === type) { route = null; renderQuick(); draw(); return; }
+    if (route && route.type === type) { route = null; render(); draw(); return; }
     route = planRoute(type);
     if (!route) { toast("No route yet", "The map is still loading, or there are no strong spots for this type."); return; }
     if (!N.on[type]) toggleType(type);
     toast(`${TY[type].name} route planned`, `${route.stops.length} stops, about ${route.km.toFixed(1)} km. Follow the numbers on the map.`, "ok");
-    renderQuick(); draw();
+    render(); draw();
   }
   window.drawRoute = () => {
     if (!route || !S.map) return;
@@ -205,33 +266,22 @@
   };
 
   // ------------------------------------------------------------ heatmap
-  const RADIUS_M = 70; // how far one logged find spreads
   function heatCanvas() {
     const p = predict();
     if (!p) return null;
-    const key = `${S.map.width}|${N.nodes.length}|${N.nodes.at(-1)?.ts}|${JSON.stringify(N.on)}`;
+    const key = `${S.map.width}|${JSON.stringify(N.on)}`;
     if (N.heat?.key === key) return N.heat.canvas;
-    const { W, H } = p, sx = W / S.map.width;
+    const { W, H } = p;
     const out = document.createElement("canvas"); out.width = W; out.height = H;
     const octx = out.getContext("2d");
-    const r = Math.max(2, RADIUS_M * ((S.map.width - 2 * S.map.oceanMargin) / mapSize()) * sx);
     const smooth = (e0, e1, v) => { const q = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return q * q * (3 - 2 * q); };
-    for (const t of TYPES) {
-      if (!N.on[t.id]) continue;
-      const d = Float32Array.from(p.maps[TIDX[t.id]]);
-      // logged finds: real evidence, weighted heavily
-      for (const nd of N.nodes) {
-        if (nd.t !== t.id) continue;
-        const [ix, iy] = worldToImg(nd.x, nd.y), cx = ix * sx, cy = iy * sx;
-        for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(H - 1, cy + r); y++)
-          for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(W - 1, cx + r); x++) {
-            const q = 1 - Math.hypot(x - cx, y - cy) / r;
-            if (q > 0) d[y * W + x] += 0.45 * q * q;
-          }
-      }
+    // "All ores" replaces the single-type layers when it's on
+    const layers = N.on.all ? [TY.all] : ORES.filter((t) => N.on[t.id]);
+    for (const t of layers) {
+      const d = p.maps[TIDX[t.id]];
       const img = octx.createImageData(W, H), o = img.data;
       for (let i = 0; i < d.length; i++) {
-        const v = Math.min(1, d[i]);
+        const v = d[i];
         if (v < 0.08) continue;
         o[i * 4] = t.lo[0] + (t.hi[0] - t.lo[0]) * v;
         o[i * 4 + 1] = t.lo[1] + (t.hi[1] - t.lo[1]) * v;
@@ -248,41 +298,19 @@
 
   // called from app.js draw(), in image coordinates; px = one screen pixel
   window.drawNodes = (ctx, px) => {
-    if (!S.layers.nodes || !S.map || !TYPES.some((t) => N.on[t.id])) return;
-    if (N.mode === "heat") {
-      const hc = heatCanvas();
-      if (hc) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(hc, 0, 0, S.map.width, S.map.height); }
+    if (!S.layers.nodes || !S.map || !anyOn()) return;
+    const hc = heatCanvas();
+    if (hc) {
+      // zoomed in, the heatmap fades back so the terrain and node spots show through
+      const pxPerM = ((S.map.width - 2 * S.map.oceanMargin) / mapSize()) * S.view.scale;
+      ctx.globalAlpha = N.icons ? Math.max(0.22, Math.min(1, 1.45 - pxPerM * 0.65)) : 1;
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high"; ctx.drawImage(hc, 0, 0, S.map.width, S.map.height);
+      ctx.globalAlpha = 1;
     }
-    // logged finds as dots: always in dots mode, and once zoomed in on the heatmap
-    if (N.mode === "dots" || S.view.scale > 1.6) {
-      for (const n of N.nodes) {
-        if (!N.on[n.t]) continue;
-        const [x, y] = worldToImg(n.x, n.y);
-        ctx.fillStyle = TY[n.t].color; ctx.strokeStyle = "rgba(8,12,19,.9)"; ctx.lineWidth = 1.5 * px;
-        ctx.beginPath(); ctx.arc(x, y, 3.6 * px, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      }
-    }
+    if (N.icons) drawIcons(ctx, px);
   };
 
-  // ------------------------------------------------------------ logging
-  async function logNode(type, x, y) {
-    if (S.demo) {
-      const [mx, my] = x == null ? [S.team.members[0].x, S.team.members[0].y] : [x, y];
-      setNodes([...N.nodes, { t: type, x: Math.round(mx), y: Math.round(my), ts: Date.now(), by: "you" }]);
-      toast(`${TY[type].name} node logged`, `at ${gridLabel(mx, my)}`, "ok");
-      return;
-    }
-    try {
-      setNodes(await invoke("log_node", { type, x, y }));
-      toast(`${TY[type].name} node logged`, "Shared with your team", "ok");
-    } catch (e) { toast("Couldn't log node", String(e), "bad"); }
-  }
-  async function removeNode(ts) {
-    if (S.demo) return setNodes(N.nodes.filter((n) => n.ts !== ts));
-    try { setNodes(await invoke("remove_node", { ts })); } catch (e) { toast("Couldn't remove node", String(e), "bad"); }
-  }
-
-  // right-click the map: log a node at that spot
+  // ------------------------------------------------- right-click: markers
   const menu = document.createElement("div");
   menu.className = "ctx-menu float"; menu.hidden = true;
   document.body.appendChild(menu);
@@ -291,23 +319,17 @@
   document.addEventListener("keydown", (e) => e.key === "Escape" && closeMenu());
   canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
-    if (!S.map || !S.connected) return;
+    if (!S.map || !window.Pins) return;
     const r = canvas.getBoundingClientRect();
     const [wx, wy] = imgToWorld((e.clientX - r.left - S.view.x) / S.view.scale, (e.clientY - r.top - S.view.y) / S.view.scale);
-    const near = N.nodes.filter((n) => Math.hypot(n.x - wx, n.y - wy) < 25).sort((a, b) => Math.hypot(a.x - wx, a.y - wy) - Math.hypot(b.x - wx, b.y - wy))[0];
-    menu.innerHTML = `<div class="ctx-head">Log node at ${gridLabel(wx, wy)}</div>` +
-      TYPES.map((t) => `<button data-t="${t.id}"><i style="background:${t.color}"></i>${t.name}</button>`).join("") +
-      (near ? `<div class="ctx-sep"></div><button data-rm="${near.ts}" class="danger">Remove ${TY[near.t].name.toLowerCase()} node</button>` : "") +
-      (window.Pins ? `<div class="ctx-sep"></div><div class="ctx-head">Add marker</div>` +
-        Object.entries(Pins.kinds).map(([k, v]) => `<button data-pin="${k}"><i style="background:${v.color}"></i>${v.name}</button>`).join("") +
-        (Pins.near(wx, wy) ? `<button data-unpin class="danger">Remove marker</button>` : "") : "");
+    menu.innerHTML = `<div class="ctx-head">Add marker at ${gridLabel(wx, wy)}</div>` +
+      Object.entries(Pins.kinds).map(([k, v]) => `<button data-pin="${k}"><i style="background:${v.color}"></i>${v.name}</button>`).join("") +
+      (Pins.near(wx, wy) ? `<div class="ctx-sep"></div><button data-unpin class="danger">Remove marker</button>` : "");
     menu.style.left = `${Math.min(e.clientX, innerWidth - 200)}px`;
-    menu.style.top = `${Math.min(e.clientY, innerHeight - 340)}px`;
+    menu.style.top = `${Math.min(e.clientY, innerHeight - 220)}px`;
     menu.hidden = false;
     menu.onclick = (ev) => {
       const b = ev.target.closest("button"); if (!b) return;
-      if (b.dataset.t) logNode(b.dataset.t, wx, wy);
-      if (b.dataset.rm) removeNode(+b.dataset.rm);
       if (b.dataset.pin) Pins.add(b.dataset.pin, wx, wy);
       if ("unpin" in b.dataset) { const p = Pins.near(wx, wy); if (p) Pins.remove(p); }
       closeMenu();
@@ -315,88 +337,59 @@
   });
 
   // ------------------------------------------------------------- panel
-  // floating toggles on the map's right edge
-  function renderQuick() {
-    const counts = Object.fromEntries(TYPES.map((t) => [t.id, N.nodes.filter((n) => n.t === t.id).length]));
-    $("#node-quick").innerHTML = `<div class="nq-title">Node heatmap</div>` + TYPES.map((t) => `
-      <button data-type="${t.id}" class="${N.on[t.id] && S.layers.nodes ? "on" : ""}" style="--c:${t.color}" title="Where ${t.name.toLowerCase()} nodes likely spawn (from the terrain)${counts[t.id] ? `, plus ${counts[t.id]} logged finds` : ""}">
-        <i></i><span>${t.name}</span><b>${counts[t.id] || ""}</b>
-      </button>`).join("") +
-      `<div class="nq-sep"></div><button class="nq-route ${route ? "on" : ""}" data-route title="Plan a farming route through the best spots">${route ? "Clear route" : "Plan route"}</button>`;
-  }
   function toggleType(type) {
     const turningOn = !(N.on[type] && S.layers.nodes);
+    if (type === "all" && turningOn) for (const t of ORES) N.on[t.id] = false; // All ores = one combined view
+    if (type !== "all" && turningOn) N.on.all = false;
     N.on[type] = turningOn;
     if (turningOn && !S.layers.nodes) { S.layers.nodes = true; document.querySelector('[data-layer="nodes"]').checked = true; }
     saveView(); N.heat = null; render(); draw();
   }
+  const routeType = () => TYPES.find((x) => N.on[x.id])?.id ?? "all"; // the shown view, else all ores
 
   function render() {
-    renderQuick();
-    const counts = Object.fromEntries(TYPES.map((t) => [t.id, N.nodes.filter((n) => n.t === t.id).length]));
+    // floating toggles on the map's right edge
+    $("#node-quick").innerHTML = `<div class="nq-title">Node heatmap</div>` + TYPES.map((t) => `
+      <button data-type="${t.id}" class="${N.on[t.id] && S.layers.nodes ? "on" : ""}" style="--c:${t.color}" title="Where ${t.id === "all" ? "nodes of any kind" : t.name.toLowerCase() + " nodes"} likely spawn (predicted from the terrain)">
+        <i></i><span>${t.name}</span><b></b>
+      </button>`).join("") +
+      `<div class="nq-sep"></div><button class="nq-route ${route ? "on" : ""}" data-route title="Plan a farming route through the best spots">${route ? "Clear route" : "Plan route"}</button>`;
+
     $("#node-types").innerHTML = TYPES.map((t) => `
       <button data-type="${t.id}" class="${N.on[t.id] ? "on" : ""}" style="--c:${t.color}">
-        <i></i><span>${t.name}</span><b>${counts[t.id]}</b>
+        <i></i><span>${t.name}</span>
       </button>`).join("");
-    document.querySelectorAll("#node-mode button").forEach((b) => b.classList.toggle("on", b.dataset.mode === N.mode));
+    $("#node-icons").checked = N.icons;
+    $("#node-route").textContent = route ? "Clear route" : `Plan a ${TY[routeType()].name.toLowerCase()} route`;
 
-    // hotspots: grid squares with the most finds of the visible types
-    const cells = new Map();
-    for (const n of N.nodes) {
-      if (!N.on[n.t]) continue;
-      const g = gridLabel(n.x, n.y), c = cells.get(g) || { g, x: 0, y: 0, n: 0, by: {} };
-      c.x += n.x; c.y += n.y; c.n++; c.by[n.t] = (c.by[n.t] || 0) + 1;
-      cells.set(g, c);
-    }
-    const hot = [...cells.values()].sort((a, b) => b.n - a.n).slice(0, 6);
-    const max = hot[0]?.n || 1;
-    $("#node-hot").innerHTML = hot.length ? hot.map((c) => `
-      <button class="hot-row" data-x="${c.x / c.n}" data-y="${c.y / c.n}">
-        <b>${c.g}</b>
-        <span class="hot-bar"><span style="width:${(c.n / max) * 100}%;background:${TY[Object.entries(c.by).sort((a, b) => b[1] - a[1])[0][0]].color}"></span></span>
-        <span class="hot-n">${TYPES.filter((t) => c.by[t.id]).map((t) => `<em style="color:${t.color}">${c.by[t.id]}</em>`).join(" ")}</span>
-      </button>`).join("") : `<div class="raid-empty">No nodes logged on this map yet.</div>`;
-
-    const recent = [...N.nodes].sort((a, b) => b.ts - a.ts).slice(0, 8);
-    $("#node-recent").innerHTML = recent.map((n) => `
-      <div class="recent-row">
-        <i style="background:${TY[n.t].color}"></i>
-        <span class="rn">${TY[n.t].name} · ${gridLabel(n.x, n.y)}</span>
-        <span class="muted small">${esc(n.by || "")} · ${fmtAgo(n.ts)}</span>
-        <button data-rm="${n.ts}" title="Remove">✕</button>
-      </div>`).join("");
-    $("#node-recent-label").hidden = !recent.length;
+    // best areas for the shown view
+    const t = routeType(), peaks = S.map ? findPeaks(t, 6) : [];
+    const top = peaks[0]?.rv || 1;
+    $("#node-hot").innerHTML = peaks.length ? peaks.map((pk, i) => `
+      <button class="hot-row" data-x="${pk.x}" data-y="${pk.y}" title="Jump there on the map">
+        <b>${gridLabel(pk.x, pk.y)}</b>
+        <span class="hot-bar"><span style="width:${Math.round((pk.rv / top) * 100)}%;background:${TY[t].color}"></span></span>
+        <span class="hot-n"><em style="color:${TY[t].color}">#${i + 1}</em></span>
+      </button>`).join("") : `<div class="muted small">Connect to a server to see its best areas.</div>`;
   }
 
   $("#node-types").onclick = (e) => { const b = e.target.closest("[data-type]"); if (b) toggleType(b.dataset.type); };
   $("#node-quick").onclick = (e) => {
-    if (e.target.closest("[data-route]")) {
-      if (route) { route = null; renderQuick(); draw(); return; }
-      const t = TYPES.find((x) => N.on[x.id])?.id ?? "sulfur"; // the shown heatmap, else sulfur
-      return toggleRoute(t);
-    }
+    if (e.target.closest("[data-route]")) { if (route) { route = null; render(); draw(); return; } return toggleRoute(routeType()); }
     const b = e.target.closest("[data-type]"); if (b) toggleType(b.dataset.type);
   };
-  // keep the quick bar in sync when the "Nodes" layer chip is switched
-  document.querySelector('[data-layer="nodes"]').addEventListener("change", () => setTimeout(renderQuick));
-  $("#node-mode").onclick = (e) => { const b = e.target.closest("[data-mode]"); if (!b) return; N.mode = b.dataset.mode; saveView(); render(); draw(); };
-  $("#node-log").onclick = (e) => { const b = e.target.closest("[data-log]"); if (b) logNode(b.dataset.log); };
+  $("#node-icons").onchange = (e) => { N.icons = e.target.checked; saveView(); draw(); };
+  $("#node-route").onclick = () => { if (route) { route = null; render(); draw(); } else toggleRoute(routeType()); };
   $("#node-hot").onclick = (e) => { const b = e.target.closest(".hot-row"); if (b) centerOn(+b.dataset.x, +b.dataset.y, Math.max(S.view.scale, 1.8)); };
-  $("#node-recent").onclick = (e) => { const b = e.target.closest("[data-rm]"); if (b) removeNode(+b.dataset.rm); };
-  $("#node-clear").onclick = async () => {
-    if (!N.nodes.length || !confirm("Clear every logged node for this map? This can't be undone.")) return;
-    if (S.demo) return setNodes([]);
-    try { setNodes(await invoke("clear_nodes")); } catch (e) { toast("Couldn't clear nodes", String(e), "bad"); }
-  };
-
-  listen("nodes-changed", ({ payload }) => setNodes(payload));
+  // keep the quick bar in sync when the "Nodes" layer chip is switched
+  document.querySelector('[data-layer="nodes"]').addEventListener("change", () => setTimeout(render));
 
   window.Nodes = {
-    async load() { try { setNodes(await invoke("get_nodes")); } catch { setNodes([]); } },
-    set: setNodes,
-    reset: () => { route = null; setNodes([]); },
+    load() { N.heat = null; render(); }, // predictions are computed from the map when needed
+    set() {},
+    reset: () => { route = null; pred = null; N.heat = null; render(); },
     planRoute: toggleRoute,
-    _stats() { const p = predict(); if (!p) return null; return ["stone", "metal", "sulfur"].map((t, k) => { const d = p.maps[k]; let a = 0, b = 0, land = 0; for (const v of d) { if (v > 0) land++; if (v > 0.08) a++; if (v > 0.5) b++; } return { t, tinted: (a / d.length * 100).toFixed(1) + "%", hot: (b / d.length * 100).toFixed(2) + "%" }; }); },
+    render,
   };
   render();
 })();

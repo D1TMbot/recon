@@ -398,7 +398,7 @@
         }
       }
     }
-    window.Nodes?.set(demoNodes);
+    void demoNodes; // (logged finds were removed; heatmaps are predicted from the terrain)
 
     // fake vending machines: clusters at Outpost and Bandit Camp plus a few player shops
     DB.ready.then(() => {
