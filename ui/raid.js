@@ -142,6 +142,25 @@
   const mixText = (mix) => EXPLOSIVES.filter((e) => mix[e.id]).map((e) => `${mix[e.id]} ${e.short}${mix[e.id] > 1 && !/[o4]$/.test(e.short) ? "s" : ""}`).join(" + ");
   const plural = (e, n) => (n === 1 || e.id === "explo" || e.id === "c4" ? e.name : e.name + "s");
 
+  // ------------------------------------------------------------- stash
+  // What's already in your monitored boxes, counted as the sulfur it took.
+  function renderStash(need) {
+    const el = $("#raid-stash"), st = window.Stash?.stash();
+    if (!st || !st.boxes) {
+      el.innerHTML = `<div class="stash-hint">Tip: put a Storage Monitor on your sulfur or boom box (hold E on it in-game → Pair) to see how much of this you already have.</div>`;
+      return;
+    }
+    const have = st.sulfur, left = Math.max(0, need - have), pct = need ? Math.min(100, (have / need) * 100) : 100;
+    el.innerHTML = `
+      <div class="stash-head"><span>Your stash</span><b>${fmt(have)}${need ? ` / ${fmt(need)}` : ""} sulfur</b></div>
+      ${need ? `<div class="stash-bar"><span style="width:${pct}%"></span></div>` : ""}
+      <div class="stash-items">${st.items.map(([s, n]) => `<span>${DB.iconShort(s, s, "xs")}${fmt(n)}</span>`).join("") || `<span class="muted">No sulfur, gunpowder or explosives in your monitored boxes.</span>`}</div>
+      ${need ? (left ? `<div class="stash-foot"><span>Farm about <b>${fmt(left)}</b> more sulfur</span><button class="link-btn" id="stash-route">Plan a sulfur route</button></div>`
+                    : `<div class="stash-foot ok">You have enough for this raid.</div>`) : ""}`;
+    const b = $("#stash-route");
+    if (b) b.onclick = () => { openPanel("map"); window.Nodes?.planRoute("sulfur"); };
+  }
+
   // ------------------------------------------------------------ target
   const enemyPins = () => (window.Pins?.all?.() ?? []).filter((p) => p.kind === "enemy");
   function renderTarget() {
@@ -182,6 +201,7 @@
     $("#raid-items").innerHTML = EXPLOSIVES.filter((e) => total[e.id]).map((e) => `<div class="raid-pill">${pic(e.id, e.name, "xs")}<b>${fmt(total[e.id])}</b> ${plural(e, total[e.id])}</div>`).join("")
       || `<div class="muted small">Nothing added yet</div>`;
     $("#raid-warn").hidden = !impossible;
+    renderStash(sulfur);
     $("#raid-share").disabled = !sulfur;
 
     $("#raid-cats").innerHTML = CATS.map((c) => `<button data-cat="${c}" class="${c === R.cat ? "on" : ""}">${c}</button>`).join("");

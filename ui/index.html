@@ -162,6 +162,7 @@
             </div>
           </div>
           <div class="raid-items" id="raid-items"></div>
+          <div class="raid-stash" id="raid-stash"></div>
           <div class="raid-warn" id="raid-warn" hidden>Some targets can't be broken with the explosives you picked.</div>
         </div>
 
@@ -291,12 +292,22 @@
       </div>
 
       <div class="tab" id="tab-craft">
-        <div class="seg" id="craft-mode"><button data-mode="craft">Craft</button><button data-mode="recycle">Recycle</button></div>
-        <div class="search-wrap"><svg><use href="#i-search"/></svg><input id="craft-q" class="search" autocomplete="off" /></div>
-        <div id="craft-opt"></div>
-        <div class="sec-label">List <button class="link-btn" id="craft-clear">Clear</button></div>
-        <div id="craft-list"></div>
-        <div id="craft-out"></div>
+        <div class="seg" id="craft-mode"><button data-mode="craft">Craft</button><button data-mode="recycle">Recycle</button><button data-mode="upkeep">Upkeep</button></div>
+        <div id="craft-main">
+          <div class="search-wrap"><svg><use href="#i-search"/></svg><input id="craft-q" class="search" autocomplete="off" /></div>
+          <div id="craft-opt"></div>
+          <div class="sec-label">List <button class="link-btn" id="craft-clear">Clear</button></div>
+          <div id="craft-list"></div>
+          <div id="craft-out"></div>
+        </div>
+        <div id="upkeep-box" hidden>
+          <div class="sec-label">Your base</div>
+          <div class="upkeep-grid" id="upkeep-grid"></div>
+          <div id="upkeep-out"></div>
+          <div class="sec-label" id="upkeep-tc-label">Your tool cupboard</div>
+          <div id="upkeep-tc"></div>
+          <div id="upkeep-lasts"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -344,10 +355,12 @@
 
   <script src="db.js"></script>
   <script src="app.js"></script>
+  <script src="stash.js"></script>
   <script src="raid.js"></script>
   <script src="nodes.js"></script>
   <script src="vending.js"></script>
   <script src="craft.js"></script>
+  <script src="upkeep.js"></script>
   <script src="extras.js"></script>
   <script src="population.js"></script>
   <script src="phone.js"></script>

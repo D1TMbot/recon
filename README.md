@@ -36,7 +36,8 @@ Your Rust+ sign-in lasts 14 days; Recon tells you when to sign in again.
 - Node heatmaps for stone, metal and sulfur predicted from the map's terrain, plus farm routes near your base
 - Raid planner (cheapest explosive mix and total sulfur), crafting and recycling calculator
 - Vending machine search (on servers that share shops), team chat, smart switches and automations
-- Upkeep tracker, wipe countdown, server population graph, shared map markers
+- Upkeep tracker and calculator (how long your TC lasts), wipe countdown, server population graph, shared map markers
+- Sulfur stash tracker: what your monitored boxes hold vs. what a raid plan needs
 - Recon on your phone (home Wi-Fi or Tailscale)
 
 ## Privacy

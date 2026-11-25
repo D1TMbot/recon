@@ -88,6 +88,7 @@ function resetView() {
   window.Nodes?.reset();
   window.Pins?.reset();
   window.Events?.reset();
+  window.Stash?.reset();
   $("#srv-name").textContent = "No server selected";
   $("#srv-stats").innerHTML = "";
   $("#srv-mini").textContent = "";
@@ -121,6 +122,7 @@ async function selectServer(id, { reconnect = false } = {}) {
     window.Nodes?.load();
     window.Pins?.onConnect();
     window.Events?.onConnect();
+    window.Stash?.refresh();
     S.timers.push(setInterval(loadTeam, 4000));
     S.timers.push(setInterval(loadMarkers, 8000));
     S.timers.push(setInterval(async () => { try { S.info = await invoke("get_info"); renderStats(); } catch {} }, 60000));
@@ -753,6 +755,7 @@ function openPanel(name) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${name}`));
   if (name === "devices" && S.connected) { loadDevices(); window.Automations?.load(); }
   if (name === "players") window.Population?.load();
+  if (name === "raid" || name === "craft") window.Stash?.refresh();
   if (name === "alerts") window.PhoneSettings?.load();
   if (name === "shops") { window.Vending?.render(); setTimeout(() => $("#shop-q").focus(), 50); }
   if (name === "team") { const log = $("#chat-log"); log.scrollTop = log.scrollHeight; }

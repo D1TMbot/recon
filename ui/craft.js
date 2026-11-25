@@ -57,6 +57,10 @@
 
   function render() {
     $("#craft-mode").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.mode === C.mode));
+    const upkeep = C.mode === "upkeep";
+    $("#craft-main").hidden = upkeep;
+    $("#upkeep-box").hidden = !upkeep;
+    if (upkeep) { window.Upkeep?.render(); return; }
     $("#craft-q").placeholder = C.mode === "craft" ? "Add something to craft" : "Add something to recycle";
     $("#craft-opt").innerHTML = C.mode === "craft"
       ? `<label class="toggle"><input type="checkbox" id="opt-raw" ${C.raw ? "checked" : ""}><span></span>Break gunpowder and explosives down to raw materials</label>`

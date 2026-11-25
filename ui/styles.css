@@ -232,6 +232,17 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .raid-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .raid-pill { font-size: 12px; padding: 4px 9px 4px 5px; border-radius: 99px; background: var(--accent-bg); color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
 .raid-pill b { color: var(--text); font-weight: 600; }
+.raid-stash { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; }
+.stash-hint { color: var(--muted); line-height: 1.5; }
+.stash-head { display: flex; justify-content: space-between; color: var(--muted); }
+.stash-head b { color: var(--text); font-variant-numeric: tabular-nums; }
+.stash-bar { height: 6px; border-radius: 3px; background: var(--panel); margin: 7px 0; overflow: hidden; }
+.stash-bar span { display: block; height: 100%; background: var(--warn); border-radius: 3px; }
+.stash-items { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; color: var(--muted); }
+.stash-items span { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.stash-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--muted); }
+.stash-foot b { color: var(--warn); }
+.stash-foot.ok { color: var(--ok); }
 .raid-warn { margin-top: 10px; font-size: 12px; color: var(--alert); }
 .sec-label { margin: 18px 4px 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; }
 .sec-label span { text-transform: none; letter-spacing: 0; }
@@ -372,6 +383,23 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .sr-price.with-ic { gap: 5px; }
 .ac-box button { display: flex !important; align-items: center; gap: 9px; }
 .scrap-sum { flex-direction: row !important; align-items: center; gap: 12px !important; }
+
+/* ---------------------------------------------------------------- upkeep */
+.upkeep-grid { display: flex; flex-direction: column; gap: 6px; }
+.ug-head, .ug-row { display: grid; grid-template-columns: 1.15fr repeat(3, 1fr); gap: 6px; align-items: center; }
+.ug-head span { font-size: 10.5px; color: var(--muted); line-height: 1.25; text-align: center; }
+.ug-row > span { font-size: 12px; }
+.ug-row input, .ug-tc input { width: 100%; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; outline: none; color: var(--text); }
+.ug-row input:focus, .ug-tc input:focus { border-color: var(--accent); }
+.ug-note { margin: 6px 2px 0; line-height: 1.5; }
+.ug-note b { color: var(--text); font-weight: 600; }
+.ug-tc { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ug-tc label { display: flex; align-items: center; gap: 5px; }
+.ug-tc.live span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ug-lasts { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; }
+.ug-lasts b { color: var(--ok); font-size: 16px; }
+.ug-lasts.warn b { color: var(--alert); }
+#upkeep-tc-label span { text-transform: none; letter-spacing: 0; color: var(--ok); }
 
 /* ----------------------------------------------------------------- craft */
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin: 4px 2px 0; cursor: pointer; line-height: 1.4; }
